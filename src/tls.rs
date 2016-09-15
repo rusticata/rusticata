@@ -3,12 +3,60 @@ extern crate libc;
 use std;
 use libc::c_char;
 
+use std::io::Write;
+use std::io::stdout;
+
 use nom::*;
 
-use tls_parser::tls::{TlsMessage,TlsMessageHandshake,tls_parser_many};
+use tls_parser::tls::{TlsMessage,TlsPlaintext,TlsMessageHandshake,tls_parser_many};
 use tls_parser::tls_ciphers::TlsCipherSuite;
 use tls_parser::tls_extensions::parse_tls_extensions;
 use der_parser::der::parse_der;
+
+
+pub struct TlsParserState<'a> {
+    pub o: Option<&'a[u8]>,
+    m: Option<Vec<TlsPlaintext<'a>>>,
+}
+
+impl<'a> TlsParserState<'a> {
+    pub fn new(i: &'a[u8], m:Option<Vec<TlsPlaintext<'a>>>) -> TlsParserState<'a> {
+        TlsParserState{o:Some(i),m:m}
+    }
+
+    fn send(&self, value: i32) -> bool {
+        println!("=============================================================");
+        println!("inner send: {}", value);
+        println!("m: {:?}", self.m);
+        println!("=============================================================");
+        let _ = stdout().flush();
+        true
+    }
+}
+
+impl<'a> Drop for TlsParserState<'a> {
+    fn drop(&mut self) {
+        println!("DROP");
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn rusticata_new_tls_parser_state<'a>() -> Box<TlsParserState<'a>> {
+    Box::new(TlsParserState::new(b"blah",None))
+}
+
+#[no_mangle]
+pub extern fn rusticata_free_tls_parser_state<'a>(_: Box<TlsParserState<'a>>)
+{
+    println!("rusticata_free_tls_parser_state()");
+}
+
+#[no_mangle]
+pub extern fn rusticata_use_tls_parser_state<'a>(this: &TlsParserState<'a>, value: i32) -> bool
+{
+    println!("rusticata_use_tls_parser_state({:?})", value);
+    this.send(value)
+}
 
 
 
@@ -26,7 +74,7 @@ pub extern "C" fn rusticata_parse_der(value: *const c_char, len: u32) -> i32 {
 }
 
 #[no_mangle]
-pub extern "C" fn rusticata_tls_decode(direction: u8, value: *const c_char, len: u32) -> i32 {
+pub extern "C" fn rusticata_tls_decode<'a>(direction: u8, value: *const c_char, len: u32) -> Box<TlsParserState<'a>> {
     SCLogDebug!("[rust] suri_tls_decode");
 
     let data_len = len as usize;
@@ -42,6 +90,7 @@ pub extern "C" fn rusticata_tls_decode(direction: u8, value: *const c_char, len:
 
 
     // XXX match d with nom::IResult::Done, check if ServerHello, and print selected cipher
+    let r =
     match d {
         IResult::Done(rem,p) => {
             SCLogDebug!(format!("TLS parser successful {} element(s)\0", p.len()).as_str());
@@ -67,12 +116,13 @@ pub extern "C" fn rusticata_tls_decode(direction: u8, value: *const c_char, len:
                 }
             }
             if rem.len() > 0 { SCLogWarning!(format!("** unparsed ** {:?}\0",rem).as_str()); };
+            Some(p)
         },
-        IResult::Error(e) => SCLogError!(format!("TLS parser reported an error: {:?}\0", e).as_str()),
-        IResult::Incomplete(e) => SCLogError!(format!("TLS parser reported incomplete input: {:?}\0", e).as_str()),
-    }
+        IResult::Error(e) => {SCLogError!(format!("TLS parser reported an error: {:?}\0", e).as_str());None},
+        IResult::Incomplete(e) => {SCLogError!(format!("TLS parser reported incomplete input: {:?}\0", e).as_str());None},
+    };
 
-    0
+    Box::new(TlsParserState::new(b"blah",r))
 }
 
 #[cfg(test)]
