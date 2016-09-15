@@ -3,6 +3,7 @@ extern crate libc;
 #[macro_use]
 extern crate nom;
 
+extern crate der_parser;
 extern crate tls_parser;
 
 const SURICATA_RUST_MAGIC : u32 = 0x1234;

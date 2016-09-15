@@ -8,7 +8,7 @@ use nom::*;
 use tls_parser::tls::{TlsMessage,TlsMessageHandshake,tls_parser_many};
 use tls_parser::tls_ciphers::TlsCipherSuite;
 use tls_parser::tls_extensions::parse_tls_extensions;
-use tls_parser::der::parse_der;
+use der_parser::der::parse_der;
 
 
 
