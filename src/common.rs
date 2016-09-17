@@ -1,6 +1,6 @@
-use libc::c_void;
+use std::ffi::CString;
 
-pub type LogCallback = extern "C" fn (lvl: u32, file: *const c_void, line: u32, func: *const c_void, err: u32, msg: *const c_void);
+pub type LogCallback = extern "C" fn (lvl: u32, file: *const i8, line: u32, func: *const i8, err: u32, msg: *const i8);
 // 
 // static RAW_LOG : *mut LogCallback = ||{};
 // 
@@ -29,11 +29,11 @@ pub fn raw_sclog_message<'a,'b>(lvl: u32, msg: &'a str, file: &'b str, line: u32
     match unsafe{suricata_config} {
         None => println!("({}:{}) [{}]: {}", file, line, lvl, msg),
         Some(c) => {
-            let c_file = file.as_ptr() as *const c_void;
-            let c_func = "<rust function>\0".as_ptr() as *const c_void;
-            let c_ptr = msg.as_ptr() as *const c_void;
+            let c_msg = CString::new(msg).unwrap();
+            let c_file = CString::new(file).unwrap();
+            let c_func = CString::new("<rust function>").unwrap();
 
-            (c.log)(lvl, c_file, line, c_func, 0, c_ptr);
+            (c.log)(lvl, c_file.as_ptr(), line, c_func.as_ptr(), 0, c_msg.as_ptr());
         },
     };
 }
