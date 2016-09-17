@@ -114,6 +114,11 @@ pub extern "C" fn rusticata_tls_decode<'a>(direction: u8, value: *const c_char, 
                             _ => (),
                         }
                     },
+                    TlsMessage::Heartbeat(ref d) => {
+                        if d.payload_len as usize > d.payload.len() {
+                            SCLogWarning!(format!("Heartbeat message with incorrect length {}. Heartbleed attempt ?\0",d.payload.len()).as_str());
+                        }
+                    },
                     _ => (),
                 }
             }
