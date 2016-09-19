@@ -15,6 +15,8 @@ pub mod common;
 pub use tls::*;
 pub mod tls;
 
+use tls_parser::tls_ciphers::COUNT;
+
 #[no_mangle]
 pub extern "C" fn rusticata_init(config: &'static mut SuricataConfig) -> i32 {
     // println!("Hello from rust");
@@ -23,6 +25,8 @@ pub extern "C" fn rusticata_init(config: &'static mut SuricataConfig) -> i32 {
     unsafe { suricata_config = Some(config) };
 
     assert_eq!(config.magic,SURICATA_RUST_MAGIC);
+
+    SCLogInfo!(format!("Rusticata TLS parser ready, {} ciphers loaded",*COUNT).as_str());
 
     SCLogError!("test error");
     SCLogInfo!("test info");

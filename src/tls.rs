@@ -2,6 +2,7 @@ extern crate libc;
 
 use std;
 use libc::c_char;
+use std::ffi::CStr;
 
 use std::io::Write;
 use std::io::stdout;
@@ -62,6 +63,29 @@ pub extern fn rusticata_use_tls_parser_state<'a>(this: &TlsParserState<'a>, valu
 
 
 
+
+#[no_mangle]
+pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
+{
+    let c_str = unsafe { CStr::from_ptr(value) };
+    let s = c_str.to_str().unwrap();
+    match TlsCipherSuite::from_name(s) {
+        Some(c) => c.id as u32,
+        None    => 0,
+    }
+}
+
+#[no_mangle]
+pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
+{
+    this.cipher as u32
+}
+
+
+
+
+
+
 #[no_mangle]
 pub extern "C" fn rusticata_parse_der(value: *const c_char, len: u32) -> i32 {
     SCLogDebug!("[rust] rusticata_parse_der");
@@ -106,8 +130,10 @@ pub extern "C" fn rusticata_tls_decode<'a>(direction: u8, value: *const c_char, 
                             },
                             TlsMessageHandshake::ServerHello(ref content) => {
                                 this.cipher = content.cipher;
-                                let lu /* cipher */ : TlsCipherSuite = content.cipher.into();
-                                SCLogDebug!(format!("Selected cipher: {:?}", lu).as_str());
+                                match TlsCipherSuite::from_id(content.cipher) {
+                                    Some(c) => SCLogDebug!(format!("Selected cipher: {:?}", c).as_str()),
+                                    _ => SCLogWarning!(format!("Unknown ciphe 0x{:x}", content.cipher).as_str()),
+                                };
                                 let blah = parse_tls_extensions(content.ext);
                                 SCLogDebug!(format!("ext {:?}", blah).as_str());
                             },
