@@ -61,6 +61,13 @@ pub extern fn rusticata_use_tls_parser_state<'a>(this: &TlsParserState<'a>, valu
     this.send(value)
 }
 
+#[no_mangle]
+pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
+{
+    this.cipher as u32
+}
+
+
 
 
 
@@ -74,13 +81,6 @@ pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
         None    => 0,
     }
 }
-
-#[no_mangle]
-pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
-{
-    this.cipher as u32
-}
-
 
 
 
@@ -135,7 +135,7 @@ pub extern "C" fn rusticata_tls_decode<'a>(direction: u8, value: *const c_char, 
                                     _ => SCLogWarning!(format!("Unknown ciphe 0x{:x}", content.cipher).as_str()),
                                 };
                                 let blah = parse_tls_extensions(content.ext);
-                                SCLogDebug!(format!("ext {:?}", blah).as_str());
+                                SCLogDebug!(format!("extensions: {:?}", blah).as_str());
                             },
                             _ => (),
                         }
