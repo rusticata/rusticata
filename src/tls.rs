@@ -86,7 +86,20 @@ pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
 
 
 #[no_mangle]
-pub extern "C" fn rusticata_probe_tls(input: *const c_char, input_len: u32, offset: u32) -> i32 {
+pub extern "C" fn rusticata_probe_tls(input: *const c_char, input_len: u32, _offset: *const c_char) -> u32 {
+    let data_len = input_len as usize;
+    let data : &[u8] = unsafe { std::slice::from_raw_parts(input as *mut u8, data_len) };
+
+    if data.len() > 2 {
+        // first byte is record type (between 0x14 and 0x17, 0x16 is handhake)
+        // second is TLS version major (0x3)
+        // third is TLS version minor (0x0 for SSLv3, 0x1 for TLSv1.0, etc.)
+        match (data[0],data[1],data[2]) {
+            (0x14...0x17,0x03,0...3) => return 1,
+            _ => (),
+        };
+    };
+
     return 0;
 }
 
