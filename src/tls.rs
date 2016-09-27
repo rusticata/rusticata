@@ -27,11 +27,11 @@ impl<'a> TlsParserState<'a> {
     }
 
     fn send(&self, value: i32) -> bool {
-        println!("=============================================================");
-        println!("inner send: {}", value);
-        println!("o: {:?}", self.o);
-        println!("cipher: {:?}", self.cipher);
-        println!("=============================================================");
+        debug!("=============================================================");
+        debug!("inner send: {}", value);
+        debug!("o: {:?}", self.o);
+        debug!("cipher: {:?}", self.cipher);
+        debug!("=============================================================");
         let _ = stdout().flush();
         true
     }
@@ -39,7 +39,7 @@ impl<'a> TlsParserState<'a> {
 
 impl<'a> Drop for TlsParserState<'a> {
     fn drop(&mut self) {
-        println!("DROP");
+        debug!("DROP");
     }
 }
 
@@ -51,13 +51,13 @@ pub extern "C" fn rusticata_new_tls_parser_state<'a>() -> Box<TlsParserState<'a>
 #[no_mangle]
 pub extern fn rusticata_free_tls_parser_state<'a>(_: Box<TlsParserState<'a>>)
 {
-    println!("rusticata_free_tls_parser_state()");
+    debug!("rusticata_free_tls_parser_state()");
 }
 
 #[no_mangle]
 pub extern fn rusticata_use_tls_parser_state<'a>(this: &TlsParserState<'a>, value: i32) -> bool
 {
-    println!("rusticata_use_tls_parser_state({:?})", value);
+    debug!("rusticata_use_tls_parser_state({:?})", value);
     this.send(value)
 }
 
@@ -85,73 +85,77 @@ pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
 
 
 
+#[no_mangle]
+pub extern "C" fn rusticata_probe_tls(input: *const c_char, input_len: u32, offset: u32) -> i32 {
+    return 0;
+}
 
 #[no_mangle]
 pub extern "C" fn rusticata_parse_der(value: *const c_char, len: u32) -> i32 {
-    SCLogDebug!("[rust] rusticata_parse_der");
+    debug!("[rust] rusticata_parse_der");
 
     let data_len = len as usize;
     let data : &[u8] = unsafe { std::slice::from_raw_parts(value as *mut u8, data_len) };
 
     let d = parse_der(data);
-    SCLogDebug!(format!("d: {:?}", d).as_str());
+    debug!("d: {:?}", d);
 
     0
 }
 
 #[no_mangle]
 pub extern "C" fn rusticata_tls_decode<'a>(direction: u8, value: *const c_char, len: u32, this: &'a mut TlsParserState<'a>) -> &'a mut TlsParserState<'a> {
-    SCLogDebug!("[rust] suri_tls_decode");
+    debug!("[rust] suri_tls_decode");
 
     let data_len = len as usize;
     let data : &[u8] = unsafe { std::slice::from_raw_parts(value as *mut u8, data_len) };
 
-    SCLogDebug!(format!("  direction: {}", direction).as_str());
-    SCLogDebug!(format!("  len: {}", data_len).as_str());
-    SCLogDebug!(format!("  data: {:?}", data).as_str());
+    debug!("  direction: {}", direction);
+    debug!("  len: {}", data_len);
+    debug!("  data: {:?}", data);
 
 
     let d = tls_parser_many(data);
-    SCLogDebug!(format!("d: {:?}", d).as_str());
+    debug!("d: {:?}", d);
 
 
     // XXX match d with nom::IResult::Done, check if ServerHello, and print selected cipher
     match d {
         IResult::Done(rem,p) => {
-            SCLogDebug!(format!("TLS parser successful {} element(s)", p.len()).as_str());
+            debug!("TLS parser successful {} element(s)", p.len());
             for ref record in &p {
-                SCLogDebug!(format!("{:?}", record).as_str());
+                debug!("{:?}", record);
                 match record.msg {
                     TlsMessage::Handshake(ref m) => {
                         match *m {
                             TlsMessageHandshake::ClientHello(ref content) => {
                                 let blah = parse_tls_extensions(content.ext);
-                                SCLogDebug!(format!("ext {:?}", blah).as_str());
+                                debug!("ext {:?}", blah);
                             },
                             TlsMessageHandshake::ServerHello(ref content) => {
                                 this.cipher = content.cipher;
                                 match TlsCipherSuite::from_id(content.cipher) {
-                                    Some(c) => SCLogDebug!(format!("Selected cipher: {:?}", c).as_str()),
-                                    _ => SCLogWarning!(format!("Unknown ciphe 0x{:x}", content.cipher).as_str()),
+                                    Some(c) => debug!("Selected cipher: {:?}", c),
+                                    _ => warn!("Unknown cipher 0x{:x}", content.cipher),
                                 };
                                 let blah = parse_tls_extensions(content.ext);
-                                SCLogDebug!(format!("extensions: {:?}", blah).as_str());
+                                debug!("extensions: {:?}", blah);
                             },
                             _ => (),
                         }
                     },
                     TlsMessage::Heartbeat(ref d) => {
                         if d.payload_len as usize > d.payload.len() {
-                            SCLogWarning!(format!("Heartbeat message with incorrect length {}. Heartbleed attempt ?",d.payload.len()).as_str());
+                            warn!("Heartbeat message with incorrect length {}. Heartbleed attempt ?",d.payload.len());
                         }
                     },
                     _ => (),
                 }
             }
-            if rem.len() > 0 { SCLogWarning!(format!("** unparsed ** {:?}",rem).as_str()); };
+            if rem.len() > 0 { warn!("** unparsed ** {:?}",rem); };
         },
-        IResult::Error(e) => SCLogError!(format!("TLS parser reported an error: {:?}", e).as_str()),
-        IResult::Incomplete(e) => SCLogError!(format!("TLS parser reported incomplete input: {:?}", e).as_str()),
+        IResult::Error(e) => error!("TLS parser reported an error: {:?}", e),
+        IResult::Incomplete(e) => error!("TLS parser reported incomplete input: {:?}", e),
     };
 
     this

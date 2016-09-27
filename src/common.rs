@@ -20,6 +20,7 @@ pub type LogCallback = extern "C" fn (lvl: u32, file: *const i8, line: u32, func
 pub struct SuricataConfig {
     pub magic: u32,
     pub log: LogCallback,
+    pub log_level: i32,
     // other members
 }
 
