@@ -10,6 +10,7 @@ use log::LogLevelFilter;
 
 extern crate der_parser;
 extern crate tls_parser;
+extern crate x509_parser;
 
 const SURICATA_RUST_MAGIC : u32 = 0x1234;
 

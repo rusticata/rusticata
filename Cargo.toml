@@ -11,9 +11,10 @@ crate-type = ["dylib"]
 libc = "0.2.0"
 log = "0.3.6"
 nom = "1.2.4"
-tls-parser = { git = "ssh://git@git.wzdftpd.net:22/tls-parser-rs.git" }
+# tls-parser = { git = "ssh://git@git.wzdftpd.net:22/tls-parser-rs.git" }
 der-parser = { git = "ssh://git@git.wzdftpd.net:22/der-parser-rs.git" }
+x509-parser = { git = "ssh://git@git.wzdftpd.net:22/x509-parser-rs.git" }
 snmp-parser = { git = "ssh://git@git.wzdftpd.net:22/snmp-parser-rs.git" }
 
-# [dependencies.tls-parser]
-# path = "/home/pollux/CODE/RUST/tls-parser"
+[dependencies.tls-parser]
+path = "/home/pollux/CODE/RUST/tls-parser"
