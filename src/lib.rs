@@ -19,6 +19,10 @@ pub mod common;
 pub use logger::*;
 pub mod logger;
 
+pub use rparser::*;
+#[macro_use]
+pub mod rparser;
+
 pub use tls::*;
 pub mod tls;
 
