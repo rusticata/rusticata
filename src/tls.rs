@@ -147,7 +147,7 @@ pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
     debug!("r_tls_get_next_event");
     println!("{:?}", this.events);
     match this.events.pop() {
-        None     => 0xffff,
+        None     => 0xffffffff,
         Some(ev) => ev,
     }
 }
