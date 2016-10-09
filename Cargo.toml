@@ -11,7 +11,4 @@ crate-type = ["dylib"]
 libc = "0.2.0"
 log = "0.3.6"
 nom = "1.2.4"
-# tls-parser = { git = "ssh://git@git.wzdftpd.net:22/tls-parser-rs.git" }
-
-[dependencies.tls-parser]
-path = "/home/pollux/CODE/RUST/tls-parser"
+tls-parser = { git = "https://github.com/rusticata/tls-parser.git" }
