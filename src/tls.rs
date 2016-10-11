@@ -5,9 +5,6 @@ use std::mem;
 use libc::c_char;
 use std::ffi::CStr;
 
-use std::io::Write;
-use std::io::stdout;
-
 use nom::*;
 
 use rparser::*;
@@ -15,6 +12,7 @@ use rparser::*;
 use tls_parser::tls::{TlsMessage,TlsMessageHandshake,tls_parser_many};
 use tls_parser::tls_ciphers::TlsCipherSuite;
 use tls_parser::tls_extensions::parse_tls_extensions;
+use tls_parser::tls_states::{TlsState,tls_state_transition};
 
 // --------------------------------------------
 // example implementation: TLS parser
@@ -22,6 +20,7 @@ use tls_parser::tls_extensions::parse_tls_extensions;
 #[repr(u32)]
 pub enum TlsParserEvents {
     HeartbeatOverflow = 1,
+    InvalidState = 2,
 }
 
 pub struct TlsParserState<'a> {
@@ -30,22 +29,19 @@ pub struct TlsParserState<'a> {
     events: Vec<u32>,
 
     cipher: u16,
+    state: TlsState,
 }
 
 impl<'a> TlsParserState<'a> {
     pub fn new(i: &'a[u8]) -> TlsParserState<'a> {
-        TlsParserState{o:Some(i),events:Vec::new(),cipher:0}
+        TlsParserState{
+            o:Some(i),
+            events:Vec::new(),
+            cipher:0,
+            state:TlsState::None
+        }
     }
 
-    fn send(&self, value: i32) -> bool {
-        debug!("=============================================================");
-        debug!("inner send: {}", value);
-        debug!("o: {:?}", self.o);
-        debug!("cipher: {:?}", self.cipher);
-        debug!("=============================================================");
-        let _ = stdout().flush();
-        true
-    }
 }
 
 r_declare_state_new!(r_tls_state_new,TlsParserState,b"blah");
@@ -87,6 +83,23 @@ impl<'a> RParser<TlsParserState<'a>> for TlsParser {
                 for ref record in &p {
                     debug!("{:?}", record);
                     for msg in &record.msg {
+                        if this.state == TlsState::ClientChangeCipherSpec {
+                            // Ignore records from now on, they are encrypted
+                            break
+                        };
+                        // update state machine
+                        debug!("Old state: {:?}",this.state);
+                        match tls_state_transition(this.state, msg) {
+                            Ok(s)  => this.state = s,
+                            Err(_) => {
+                                this.state = TlsState::Invalid;
+                                this.events.push(TlsParserEvents::InvalidState as u32);
+                                status |= R_STATUS_EVENTS;
+                            },
+                        };
+                        debug!("New state: {:?}",this.state);
+
+                        // extract variables
                         match *msg {
                             TlsMessage::Handshake(ref m) => {
                                 match *m {
@@ -150,14 +163,6 @@ pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
         None     => 0xffffffff,
         Some(ev) => ev,
     }
-}
-
-#[no_mangle]
-pub extern fn rusticata_use_tls_parser_state(ptr: *mut libc::c_char, value: i32) -> bool
-{
-    let this: &Box<TlsParserState> = unsafe { mem::transmute(ptr) };
-    debug!("rusticata_use_tls_parser_state({:?})", value);
-    this.send(value)
 }
 
 #[no_mangle]
