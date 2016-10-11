@@ -16,7 +16,7 @@ in suricata.
 
 ## Build
 
-Run `cargo build` for a build in debug mode, `cargo release` for release mode.
+Run `cargo build` for a build in debug mode, `cargo build --release` for release mode.
 
 ## Testing with suricata
 
