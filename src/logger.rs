@@ -13,12 +13,14 @@ impl log::Log for SimpleLogger {
         // if self.enabled(record.metadata()) {
         //     println!("{} - {}", record.level(), record.args());
         // }
+        let file = record.location().file();
+        let line = record.location().line();
         match record.level() {
-            LogLevel::Trace => SCLogDebug!(format!("{}",record.args()).as_str()),
-            LogLevel::Debug => SCLogDebug!(format!("{}",record.args()).as_str()),
-            LogLevel::Info => SCLogInfo!(format!("{}",record.args()).as_str()),
-            LogLevel::Warn => SCLogWarning!(format!("{}",record.args()).as_str()),
-            LogLevel::Error => SCLogError!(format!("{}",record.args()).as_str()),
+            LogLevel::Trace => SCLogMessage!(10,format!("{}",record.args()).as_str(),file,line),
+            LogLevel::Debug => SCLogMessage!(10,format!("{}",record.args()).as_str(),file,line),
+            LogLevel::Info  => SCLogMessage!(7, format!("{}",record.args()).as_str(),file,line),
+            LogLevel::Warn  => SCLogMessage!(5, format!("{}",record.args()).as_str(),file,line),
+            LogLevel::Error => SCLogMessage!(4, format!("{}",record.args()).as_str(),file,line),
         }
     }
 }
