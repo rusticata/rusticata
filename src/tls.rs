@@ -45,7 +45,7 @@ impl<'a> TlsParserState<'a> {
 }
 
 r_declare_state_new!(r_tls_state_new,TlsParserState,b"blah");
-r_declare_state_free!(r_tls_state_free,TlsParserState,{ debug!("Drop TlsParserState"); });
+r_declare_state_free!(r_tls_state_free,TlsParserState,{ () });
 
 struct TlsParser;
 
@@ -66,20 +66,15 @@ impl<'a> RParser<TlsParserState<'a>> for TlsParser {
     }
 
     fn parse(this: &mut TlsParserState, i: &[u8], direction: u8) -> u32 {
-        debug!("[TLS->parse]");
-        debug!("  direction: {}", direction);
-        debug!("  len: {}", i.len());
-        debug!("  data: {:?}", i);
+        debug!("[TLS->parse: direction={}, len={}]",direction,i.len());
 
 
         let d = tls_parser_many(i);
-        debug!("d: {:?}", d);
 
         let mut status = R_STATUS_OK;
 
         match d {
             IResult::Done(rem,p) => {
-                debug!("TLS parser successful {} element(s)", p.len());
                 for ref record in &p {
                     debug!("{:?}", record);
                     for msg in &record.msg {
@@ -88,7 +83,6 @@ impl<'a> RParser<TlsParserState<'a>> for TlsParser {
                             break
                         };
                         // update state machine
-                        debug!("Old state: {:?}",this.state);
                         match tls_state_transition(this.state, msg) {
                             Ok(s)  => this.state = s,
                             Err(_) => {
@@ -97,7 +91,6 @@ impl<'a> RParser<TlsParserState<'a>> for TlsParser {
                                 status |= R_STATUS_EVENTS;
                             },
                         };
-                        debug!("New state: {:?}",this.state);
 
                         // extract variables
                         match *msg {
@@ -123,7 +116,6 @@ impl<'a> RParser<TlsParserState<'a>> for TlsParser {
                                 if d.payload_len as usize > d.payload.len() {
                                     warn!("Heartbeat message with incorrect length {}. Heartbleed attempt ?",d.payload.len());
                                     this.events.push(TlsParserEvents::HeartbeatOverflow as u32);
-                                    println!("{:?}", this.events);
                                     status |= R_STATUS_EVENTS;
                                 }
                             },
@@ -137,7 +129,6 @@ impl<'a> RParser<TlsParserState<'a>> for TlsParser {
             IResult::Incomplete(e) => error!("TLS parser reported incomplete input: {:?}", e),
         };
 
-        println!("status: {:x}",status);
         status
     }
 }
@@ -157,8 +148,6 @@ pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
 {
     assert!(!ptr.is_null());
     let this: &mut TlsParserState = unsafe { mem::transmute(ptr) };
-    debug!("r_tls_get_next_event");
-    println!("{:?}", this.events);
     match this.events.pop() {
         None     => 0xffffffff,
         Some(ev) => ev,

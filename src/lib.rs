@@ -30,8 +30,6 @@ use tls_parser::tls_ciphers::CIPHERS;
 
 #[no_mangle]
 pub extern "C" fn rusticata_init(config: &'static mut SuricataConfig) -> i32 {
-    // println!("Hello from rust");
-
     assert!(std::ptr::null_mut() != config);
     unsafe { suricata_config = Some(config) };
 
@@ -48,10 +46,6 @@ pub extern "C" fn rusticata_init(config: &'static mut SuricataConfig) -> i32 {
     logger::init(log_level).unwrap();
 
     info!("Rusticata TLS parser ready, {} ciphers loaded",CIPHERS.len());
-
-    error!("test error");
-    info!("test info");
-    debug!("test debug");
 
     0
 }
