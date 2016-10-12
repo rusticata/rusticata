@@ -68,6 +68,10 @@ impl<'a> RParser<TlsParserState<'a>> for TlsParser {
     fn parse(this: &mut TlsParserState, i: &[u8], direction: u8) -> u32 {
         debug!("[TLS->parse: direction={}, len={}]",direction,i.len());
 
+        if i.len() == 0 {
+            // Connection closed ?
+            return R_STATUS_OK;
+        };
 
         let d = tls_parser_many(i);
 
