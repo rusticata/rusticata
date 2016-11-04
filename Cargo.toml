@@ -1,6 +1,11 @@
 [package]
 name = "rusticata"
 version = "0.1.0"
+description = "Glue layer for loading Rust parsers in Suricata"
+license = "LGPL-2.1+"
+keywords = ["Suricata","IDS","TLS","SSL","protocol","parser","nom"]
+homepage = "https://github.com/rusticata/rusticata"
+repository = "https://github.com/rusticata/rusticata.git"
 authors = ["Pierre Chifflier <chifflier@wzdftpd.net>"]
 
 [lib]
