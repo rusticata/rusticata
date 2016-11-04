@@ -10,8 +10,11 @@ use nom::*;
 use rparser::*;
 
 use tls_parser::tls::{TlsMessage,TlsMessageHandshake,TlsRecordType,TlsRawRecord,parse_tls_raw_record,parse_tls_record_with_header};
-use tls_parser::tls_ciphers::TlsCipherSuite;
-use tls_parser::tls_extensions::parse_tls_extensions;
+use tls_parser::tls_ciphers::*;
+use tls_parser::tls_dh::*;
+use tls_parser::tls_ec::*;
+use tls_parser::tls_extensions::*;
+use tls_parser::tls_sign_hash::*;
 use tls_parser::tls_states::{TlsState,tls_state_transition};
 
 // --------------------------------------------
@@ -32,14 +35,18 @@ pub struct TlsParserState<'a> {
 
     events: Vec<u32>,
 
-    cipher: u16,
+    cipher: Option<&'a TlsCipherSuite>,
     state: TlsState,
+
+    kx_bits: Option<u32>,
 
     /// TCP segments defragmentation buffer
     tcp_buffer: Vec<u8>,
 
     /// Handshake defragmentation buffer
     buffer: Vec<u8>,
+
+    has_signature_algorithms: bool,
 }
 
 impl<'a> TlsParserState<'a> {
@@ -47,12 +54,14 @@ impl<'a> TlsParserState<'a> {
         TlsParserState{
             o:Some(i),
             events:Vec::new(),
-            cipher:0,
+            cipher:None,
             state:TlsState::None,
+            kx_bits: None,
             // capacity is the amount of space allocated, which means elements can be added
             // without reallocating the vector
             tcp_buffer:Vec::with_capacity(16384),
             buffer:Vec::with_capacity(16384),
+            has_signature_algorithms:false,
         }
     }
 
@@ -80,16 +89,42 @@ impl<'a> TlsParserState<'a> {
                 match *m {
                     TlsMessageHandshake::ClientHello(ref content) => {
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
+                        match &ext {
+                            &IResult::Done(_,ref l) => {
+                                for extension in l {
+                                    match *extension {
+                                        TlsExtension::SignatureAlgorithms(_) => self.has_signature_algorithms = true,
+                                        _ => (),
+                                    }
+                                }
+                            },
+                            e @ _ => error!("Could not parse extentions: {:?}",e),
+                        };
                         debug!("ext {:?}", ext);
                     },
                     TlsMessageHandshake::ServerHello(ref content) => {
-                        self.cipher = content.cipher;
-                        match TlsCipherSuite::from_id(content.cipher) {
-                            Some(c) => debug!("Selected cipher: {:?}", c),
+                        self.cipher = TlsCipherSuite::from_id(content.cipher);
+                        match self.cipher {
+                            Some(c) => {
+                                debug!("Selected cipher: {:?}", c)
+                            },
                             _ => warn!("Unknown cipher 0x{:x}", content.cipher),
                         };
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         debug!("extensions: {:?}", ext);
+                    },
+                    TlsMessageHandshake::Certificate(ref content) => {
+                        debug!("cert chain length: {}",content.cert_chain.len());
+                        for cert in &content.cert_chain {
+                            debug!("cert: {:?}",cert);
+                        }
+                    },
+                    TlsMessageHandshake::ServerKeyExchange(ref content) => {
+                        // The SKE contains the chosen algorithm for the ephemeral key
+                        match self.cipher {
+                            None => (),
+                            Some (c) => { self.kx_bits = rusticata_tls_get_kx_bits(c,content.parameters,self.has_signature_algorithms) },
+                        }
                     },
                     _ => (),
                 }
@@ -262,14 +297,26 @@ pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
 }
 
 #[no_mangle]
-pub extern fn rusticata_tls_get_cipher(ptr: *mut libc::c_char) -> u32
+// pub extern fn rusticata_tls_get_cipher(ptr: *mut libc::c_char) -> u32
 // or
-// pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
+pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
 // but this gives a warning:
 // warning: generic functions must be mangled, #[warn(no_mangle_generic_items)] on by default
 {
-    let this: &Box<TlsParserState> = unsafe { mem::transmute(ptr) };
-    this.cipher as u32
+    // let this: &Box<TlsParserState> = unsafe { mem::transmute(ptr) };
+    match this.cipher {
+        None    => 0,
+        Some(c) => c.id as u32,
+    }
+}
+
+#[no_mangle]
+pub extern fn rusticata_tls_get_dh_key_bits<'a>(this: &TlsParserState<'a>) -> u32
+{
+    match this.kx_bits {
+        None    => 0,
+        Some(k) => k as u32,
+    }
 }
 
 
@@ -287,3 +334,55 @@ pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
     }
 }
 
+fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extended: bool) -> Option<u32> {
+    match cipher.kx {
+        TlsCipherKx::Ecdhe |
+        TlsCipherKx::Ecdh    => {
+            // Signed ECDH params
+            match parse_content_and_signature(parameters,parse_ecdh_params,extended) {
+                IResult::Done(_,ref parsed) => {
+                    debug!("ECDHE Parameters: {:?}",parsed);
+                    info!("Temp key: using cipher {:?}",parsed.0.curve_params);
+                    match &parsed.0.curve_params.params_content {
+                        &ECParametersContent::NamedCurve(curve_id) => {
+                            match named_curve_of_u16(curve_id) {
+                                None => (),
+                                Some(named_curve) => {
+                                    let strength = named_curve.key_bits().unwrap_or(0);
+                                    debug!("NamedCurve: {:?}, key={:?} bits",named_curve,strength);
+                                },
+                            }
+                        },
+                        c @ _ => info!("Request for strength of unknown curve {:?}",c),
+                    }
+                },
+                e @ _ => error!("Could not parse ECDHE parameters {:?}",e),
+            };
+            ()
+        },
+        TlsCipherKx::Dhe => {
+            // Signed DH params
+            match parse_content_and_signature(parameters,parse_dh_params,extended) {
+                IResult::Done(_,ref parsed) => {
+                    debug!("DHE Parameters: {:?}",parsed);
+                    info!("Temp key: using DHE size_p={:?} bits",parsed.0.dh_p.len() * 8);
+                },
+                e @ _ => error!("Could not parse DHE parameters {:?}",e),
+            };
+            ()
+        },
+        TlsCipherKx::Dh => {
+            // Anonymous DH params
+            match parse_dh_params(parameters) {
+                IResult::Done(_,ref parsed) => {
+                    debug!("ADH Parameters: {:?}",parsed);
+                    info!("Temp key: using ADH size_p={:?} bits",parsed.dh_p.len() * 8);
+                },
+                e @ _ => error!("Could not parse ADH parameters {:?}",e),
+            };
+            ()
+        },
+        ref kx @ _ => debug!("unhandled KX algorithm: {:?}",kx),
+    };
+    None
+}
