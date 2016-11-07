@@ -309,7 +309,7 @@ pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
     // let this: &Box<TlsParserState> = unsafe { mem::transmute(ptr) };
     match this.cipher {
         None    => 0,
-        Some(c) => c.id as u32,
+        Some(c) => c.id.into(),
     }
 }
 
@@ -322,10 +322,7 @@ pub extern fn rusticata_tls_get_compression<'a>(this: &TlsParserState<'a>) -> u3
 #[no_mangle]
 pub extern fn rusticata_tls_get_dh_key_bits<'a>(this: &TlsParserState<'a>) -> u32
 {
-    match this.kx_bits {
-        None    => 0,
-        Some(k) => k as u32,
-    }
+    this.kx_bits.unwrap_or(0) as u32
 }
 
 
@@ -357,12 +354,13 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
                             match named_curve_of_u16(curve_id) {
                                 None => (),
                                 Some(named_curve) => {
-                                    let strength = named_curve.key_bits().unwrap_or(0);
-                                    debug!("NamedCurve: {:?}, key={:?} bits",named_curve,strength);
+                                    let key_bits = named_curve.key_bits().unwrap_or(0);
+                                    debug!("NamedCurve: {:?}, key={:?} bits",named_curve,key_bits);
+                                    return Some(key_bits as u32);
                                 },
                             }
                         },
-                        c @ _ => info!("Request for strength of unknown curve {:?}",c),
+                        c @ _ => info!("Request for key_bits of unknown curve {:?}",c),
                     }
                 },
                 e @ _ => error!("Could not parse ECDHE parameters {:?}",e),
@@ -375,6 +373,7 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
                 IResult::Done(_,ref parsed) => {
                     debug!("DHE Parameters: {:?}",parsed);
                     info!("Temp key: using DHE size_p={:?} bits",parsed.0.dh_p.len() * 8);
+                    return Some(parsed.0.dh_p.len() as u32);
                 },
                 e @ _ => error!("Could not parse DHE parameters {:?}",e),
             };
@@ -386,6 +385,7 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
                 IResult::Done(_,ref parsed) => {
                     debug!("ADH Parameters: {:?}",parsed);
                     info!("Temp key: using ADH size_p={:?} bits",parsed.dh_p.len() * 8);
+                    return Some(parsed.dh_p.len() as u32);
                 },
                 e @ _ => error!("Could not parse ADH parameters {:?}",e),
             };
