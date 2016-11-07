@@ -35,6 +35,7 @@ pub struct TlsParserState<'a> {
 
     events: Vec<u32>,
 
+    compression: Option<u8>,
     cipher: Option<&'a TlsCipherSuite>,
     state: TlsState,
 
@@ -54,6 +55,7 @@ impl<'a> TlsParserState<'a> {
         TlsParserState{
             o:Some(i),
             events:Vec::new(),
+            compression:None,
             cipher:None,
             state:TlsState::None,
             kx_bits: None,
@@ -103,6 +105,7 @@ impl<'a> TlsParserState<'a> {
                         debug!("ext {:?}", ext);
                     },
                     TlsMessageHandshake::ServerHello(ref content) => {
+                        self.compression = Some(content.compression);
                         self.cipher = TlsCipherSuite::from_id(content.cipher);
                         match self.cipher {
                             Some(c) => {
@@ -308,6 +311,12 @@ pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
         None    => 0,
         Some(c) => c.id as u32,
     }
+}
+
+#[no_mangle]
+pub extern fn rusticata_tls_get_compression<'a>(this: &TlsParserState<'a>) -> u32
+{
+    this.compression.unwrap_or(0) as u32
 }
 
 #[no_mangle]
