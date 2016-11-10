@@ -17,3 +17,4 @@ libc = "0.2.0"
 log = "0.3.6"
 nom = "1.2.4"
 tls-parser = { git = "https://github.com/rusticata/tls-parser.git" }
+enum_primitive = "0.1.0"
