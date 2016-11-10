@@ -418,7 +418,7 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
                 IResult::Done(_,ref parsed) => {
                     debug!("DHE Parameters: {:?}",parsed);
                     info!("Temp key: using DHE size_p={:?} bits",parsed.0.dh_p.len() * 8);
-                    return Some(parsed.0.dh_p.len() as u32);
+                    return Some((parsed.0.dh_p.len() * 8) as u32);
                 },
                 e @ _ => error!("Could not parse DHE parameters {:?}",e),
             };
@@ -430,7 +430,7 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
                 IResult::Done(_,ref parsed) => {
                     debug!("ADH Parameters: {:?}",parsed);
                     info!("Temp key: using ADH size_p={:?} bits",parsed.dh_p.len() * 8);
-                    return Some(parsed.dh_p.len() as u32);
+                    return Some((parsed.dh_p.len() * 8) as u32);
                 },
                 e @ _ => error!("Could not parse ADH parameters {:?}",e),
             };
