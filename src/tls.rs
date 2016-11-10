@@ -340,6 +340,51 @@ pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
     }
 }
 
+#[no_mangle]
+pub extern fn rusticata_tls_kx_of_cipher(id: u16) -> u32
+{
+    match TlsCipherSuite::from_id(id) {
+        Some(c) => c.kx.clone() as u32,
+        None    => 0,
+    }
+}
+
+#[no_mangle]
+pub extern fn rusticata_tls_au_of_cipher(id: u16) -> u32
+{
+    match TlsCipherSuite::from_id(id) {
+        Some(c) => c.au.clone() as u32,
+        None    => 0,
+    }
+}
+
+#[no_mangle]
+pub extern fn rusticata_tls_enc_of_cipher(id: u16) -> u32
+{
+    match TlsCipherSuite::from_id(id) {
+        Some(c) => c.enc.clone() as u32,
+        None    => 0,
+    }
+}
+
+#[no_mangle]
+pub extern fn rusticata_tls_encmode_of_cipher(id: u16) -> u32
+{
+    match TlsCipherSuite::from_id(id) {
+        Some(c) => c.enc_mode.clone() as u32,
+        None    => 0,
+    }
+}
+
+#[no_mangle]
+pub extern fn rusticata_tls_mac_of_cipher(id: u16) -> u32
+{
+    match TlsCipherSuite::from_id(id) {
+        Some(c) => c.mac.clone() as u32,
+        None    => 0,
+    }
+}
+
 fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extended: bool) -> Option<u32> {
     match cipher.kx {
         TlsCipherKx::Ecdhe |
