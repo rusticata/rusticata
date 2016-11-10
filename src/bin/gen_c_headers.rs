@@ -6,7 +6,7 @@ use tls_parser::*;
 use enum_primitive::FromPrimitive;
 
 pub fn main() {
-    println!(r#"#ifndef __RUSTICATA_CIPHERSUITE_PARAMS__");
+    println!(r#"#ifndef __RUSTICATA_CIPHERSUITE_PARAMS__
 #define __RUSTICATA_CIPHERSUITE_PARAMS__
 
 // THIS FILE IS AUTO-GENERATED
