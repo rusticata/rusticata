@@ -18,11 +18,19 @@ in suricata.
 
 Run `cargo build` for a build in debug mode, `cargo build --release` for release mode.
 
+Use `cargo install` to install the library, or set the `LD_LIBRARY_PATH` environment variable.
+
 ## Testing with suricata
 
-You need the suricata version from the rusticata project: [https://github.com/rusticata/rusticata]
+You need the [suricata](https://github.com/rusticata/suricata) version from the [rusticata project](https://github.com/rusticata/rusticata)
 
 Checkout the `rust` branch.
+
+```
+git clone https://github.com/rusticata/suricata.git
+cd suricata
+git checkout rust
+```
 
 Configure suricata to enable the Rust app-layer:
 ```
