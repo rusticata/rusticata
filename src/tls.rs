@@ -248,6 +248,9 @@ impl<'a> TlsParserState<'a> {
 r_declare_state_new!(r_tls_state_new,TlsParserState,b"TLS parser");
 r_declare_state_free!(r_tls_state_free,TlsParserState,{ () });
 
+impl<'a> RState for TlsParserState<'a> {
+}
+
 struct TlsParser;
 
 impl<'a> RParser<TlsParserState<'a>> for TlsParser {

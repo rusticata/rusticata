@@ -1,12 +1,18 @@
 // --------------------------------------------
 // common functions for all parsers
 
-pub trait RParser<State> {
+pub trait RParser<State : RState> {
     fn new_state() -> State;
 
     fn probe(&[u8]) -> bool;
 
     fn parse(&mut State, &[u8], u8) -> u32;
+}
+
+// --------------------------------------------
+// common functions for all states
+
+pub trait RState {
 }
 
 // status: return code, events
