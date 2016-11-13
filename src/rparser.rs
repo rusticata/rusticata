@@ -1,18 +1,11 @@
 // --------------------------------------------
 // common functions for all parsers
 
-pub trait RParser<State : RState> {
-    fn new_state() -> State;
+pub trait RParser {
+    // XXX static functions seem to cause problems with hashmaps
+    // fn probe(&[u8]) -> bool;
 
-    fn probe(&[u8]) -> bool;
-
-    fn parse(&mut State, &[u8], u8) -> u32;
-}
-
-// --------------------------------------------
-// common functions for all states
-
-pub trait RState {
+    fn parse(&mut self, &[u8], u8) -> u32;
 }
 
 // status: return code, events
@@ -75,7 +68,7 @@ macro_rules! r_implement_probe {
         pub extern "C" fn $f(input: *const c_char, input_len: u32, _offset: *const c_char) -> u32 {
             let data_len = input_len as usize;
             let data : &[u8] = unsafe { std::slice::from_raw_parts(input as *mut u8, data_len) };
-            match $g::probe(data) {
+            match $g(data) {
                 true  => 1,
                 false => 0,
             }
@@ -86,12 +79,12 @@ macro_rules! r_implement_probe {
 macro_rules! r_implement_parse {
     ($f:ident, $g:ident) => {
         #[no_mangle]
-        pub extern "C" fn $f(direction: u8, input: *const c_char, input_len: u32, ptr: *mut TlsParserState) -> u32 {
+        pub extern "C" fn $f(direction: u8, input: *const c_char, input_len: u32, ptr: *mut $g) -> u32 {
             let data_len = input_len as usize;
             let data : &[u8] = unsafe { std::slice::from_raw_parts(input as *mut u8, data_len) };
             if ptr.is_null() { return 0xffff; };
-            let state = unsafe { &mut *ptr };
-            $g::parse(state, data, direction)
+            let parser = unsafe { &mut *ptr };
+            parser.parse(data, direction)
         }
     }
 }

@@ -30,29 +30,29 @@ pub enum TlsParserEvents {
     RecordOverflow = 5,
 }
 
-pub struct TlsParserState<'a> {
+pub struct TlsParser<'a> {
     pub o: Option<&'a[u8]>,
 
-    events: Vec<u32>,
+    pub events: Vec<u32>,
 
-    compression: Option<u8>,
-    cipher: Option<&'a TlsCipherSuite>,
-    state: TlsState,
+    pub compression: Option<u8>,
+    pub cipher: Option<&'a TlsCipherSuite>,
+    pub state: TlsState,
 
-    kx_bits: Option<u32>,
+    pub kx_bits: Option<u32>,
 
     /// TCP segments defragmentation buffer
-    tcp_buffer: Vec<u8>,
+    pub tcp_buffer: Vec<u8>,
 
     /// Handshake defragmentation buffer
-    buffer: Vec<u8>,
+    pub buffer: Vec<u8>,
 
-    has_signature_algorithms: bool,
+    pub has_signature_algorithms: bool,
 }
 
-impl<'a> TlsParserState<'a> {
-    pub fn new(i: &'a[u8]) -> TlsParserState<'a> {
-        TlsParserState{
+impl<'a> TlsParser<'a> {
+    pub fn new(i: &'a[u8]) -> TlsParser<'a> {
+        TlsParser{
             o:Some(i),
             events:Vec::new(),
             compression:None,
@@ -68,7 +68,7 @@ impl<'a> TlsParserState<'a> {
     }
 
     /// Message-level TLS parsing
-    fn parse_message_level(self: &mut TlsParserState<'a>, msg: &TlsMessage) -> u32 {
+    fn parse_message_level(&mut self, msg: &TlsMessage) -> u32 {
         debug!("parse_message_level {:?}",msg);
         let mut status = R_STATUS_OK;
         if self.state == TlsState::ClientChangeCipherSpec {
@@ -145,7 +145,7 @@ impl<'a> TlsParserState<'a> {
         status
     }
 
-    fn parse_record_level<'b>(self: &mut TlsParserState<'a>, r: &TlsRawRecord<'b>) -> u32 {
+    fn parse_record_level<'b>(&mut self, r: &TlsRawRecord<'b>) -> u32 {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
 
@@ -180,7 +180,6 @@ impl<'a> TlsParserState<'a> {
         };
         // XXX record may be compressed
         //
-        // XXX Parse one message at a time ?
         // Parse record contents as plaintext
         match parse_tls_record_with_header(record_buffer,r.hdr.clone()) {
             IResult::Done(rem2,ref msg_list) => {
@@ -204,7 +203,7 @@ impl<'a> TlsParserState<'a> {
         status
     }
 
-    pub fn parse_tcp_level<'b>(self: &mut TlsParserState<'a>, i: &'b[u8]) -> u32 {
+    pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8]) -> u32 {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
         debug!("parse_tcp_level ({})",i.len());
@@ -245,31 +244,11 @@ impl<'a> TlsParserState<'a> {
     }
 }
 
-r_declare_state_new!(r_tls_state_new,TlsParserState,b"TLS parser");
-r_declare_state_free!(r_tls_state_free,TlsParserState,{ () });
+r_declare_state_new!(r_tls_state_new,TlsParser,b"TLS parser");
+r_declare_state_free!(r_tls_state_free,TlsParser,{ () });
 
-impl<'a> RState for TlsParserState<'a> {
-}
-
-struct TlsParser;
-
-impl<'a> RParser<TlsParserState<'a>> for TlsParser {
-    fn new_state() -> TlsParserState<'a> {
-        TlsParserState::new(b"TLS parser")
-    }
-
-    fn probe(i: &[u8]) -> bool {
-        if i.len() <= 2 { return false; }
-        // first byte is record type (between 0x14 and 0x17, 0x16 is handhake)
-        // second is TLS version major (0x3)
-        // third is TLS version minor (0x0 for SSLv3, 0x1 for TLSv1.0, etc.)
-        match (i[0],i[1],i[2]) {
-            (0x14...0x17,0x03,0...3) => true,
-            _ => false,
-        }
-    }
-
-    fn parse(parser_state: &mut TlsParserState, i: &[u8], direction: u8) -> u32 {
+impl<'a> RParser for TlsParser<'a> {
+    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
         debug!("[TLS->parse: direction={}, len={}]",direction,i.len());
 
         if i.len() == 0 {
@@ -277,11 +256,22 @@ impl<'a> RParser<TlsParserState<'a>> for TlsParser {
             return R_STATUS_OK;
         };
 
-        parser_state.parse_tcp_level(i)
+        self.parse_tcp_level(i)
     }
 }
 
-r_implement_probe!(r_tls_probe,TlsParser);
+fn tls_probe(i: &[u8]) -> bool {
+    if i.len() <= 2 { return false; }
+    // first byte is record type (between 0x14 and 0x17, 0x16 is handhake)
+    // second is TLS version major (0x3)
+    // third is TLS version minor (0x0 for SSLv3, 0x1 for TLSv1.0, etc.)
+    match (i[0],i[1],i[2]) {
+        (0x14...0x17,0x03,0...3) => true,
+        _ => false,
+    }
+}
+
+r_implement_probe!(r_tls_probe,tls_probe);
 r_implement_parse!(r_tls_parse,TlsParser);
 
 // --------------------------------------------
@@ -292,10 +282,10 @@ r_implement_parse!(r_tls_parse,TlsParser);
 
 #[no_mangle]
 pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
-// pub extern fn r_tls_get_next_event<'a>(this: &mut TlsParserState<'a>) -> u32
+// pub extern fn r_tls_get_next_event<'a>(this: &mut TlsParser<'a>) -> u32
 {
     assert!(!ptr.is_null());
-    let this: &mut TlsParserState = unsafe { mem::transmute(ptr) };
+    let this: &mut TlsParser = unsafe { mem::transmute(ptr) };
     match this.events.pop() {
         None     => 0xffffffff,
         Some(ev) => ev,
@@ -305,11 +295,11 @@ pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
 #[no_mangle]
 // pub extern fn rusticata_tls_get_cipher(ptr: *mut libc::c_char) -> u32
 // or
-pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
+pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParser<'a>) -> u32
 // but this gives a warning:
 // warning: generic functions must be mangled, #[warn(no_mangle_generic_items)] on by default
 {
-    // let this: &Box<TlsParserState> = unsafe { mem::transmute(ptr) };
+    // let this: &Box<TlsParser> = unsafe { mem::transmute(ptr) };
     match this.cipher {
         None    => 0,
         Some(c) => c.id.into(),
@@ -317,13 +307,13 @@ pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParserState<'a>) -> u32
 }
 
 #[no_mangle]
-pub extern fn rusticata_tls_get_compression<'a>(this: &TlsParserState<'a>) -> u32
+pub extern fn rusticata_tls_get_compression<'a>(this: &TlsParser<'a>) -> u32
 {
     this.compression.unwrap_or(0) as u32
 }
 
 #[no_mangle]
-pub extern fn rusticata_tls_get_dh_key_bits<'a>(this: &TlsParserState<'a>) -> u32
+pub extern fn rusticata_tls_get_dh_key_bits<'a>(this: &TlsParser<'a>) -> u32
 {
     this.kx_bits.unwrap_or(0) as u32
 }
