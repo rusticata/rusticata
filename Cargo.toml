@@ -16,5 +16,10 @@ crate-type = ["dylib"]
 libc = "0.2.0"
 log = "0.3.6"
 nom = "1.2.4"
+# tls-parser = "0.2.1"
+# ntp-parser = "0.1.2"
 tls-parser = { git = "https://github.com/rusticata/tls-parser.git" }
+ntp-parser = { git = "https://github.com/rusticata/ntp-parser.git" }
+ipsec-parser = { git = "https://github.com/rusticata/ipsec-parser.git" }
 enum_primitive = "0.1.0"
+num-traits = "0.1.36"

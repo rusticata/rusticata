@@ -8,6 +8,10 @@ extern crate log;
 
 use log::LogLevelFilter;
 
+extern crate num_traits;
+
+extern crate ipsec_parser;
+extern crate ntp_parser;
 extern crate tls_parser;
 
 const SURICATA_RUST_MAGIC : u32 = 0x1234;
@@ -22,6 +26,12 @@ pub mod logger;
 pub use rparser::*;
 #[macro_use]
 pub mod rparser;
+
+pub use ipsec::*;
+pub mod ipsec;
+
+pub use ntp::*;
+pub mod ntp;
 
 pub use tls::*;
 pub mod tls;
