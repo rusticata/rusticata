@@ -15,7 +15,7 @@ crate-type = ["dylib"]
 [dependencies]
 libc = "0.2.0"
 log = "0.3.6"
-nom = "1.2.4"
+nom = {version = "^2.0", features=["verbose-errors"] }
 # tls-parser = "0.2.1"
 # ntp-parser = "0.1.2"
 tls-parser = { git = "https://github.com/rusticata/tls-parser.git" }
