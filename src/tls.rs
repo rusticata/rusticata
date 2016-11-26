@@ -7,6 +7,8 @@ use std::ffi::CStr;
 
 use nom::*;
 
+use num_traits::FromPrimitive;
+
 use rparser::*;
 
 use tls_parser::tls::{TlsMessage,TlsMessageHandshake,TlsRecordType,TlsRawRecord,parse_tls_raw_record,parse_tls_record_with_header};
@@ -153,9 +155,9 @@ impl<'a> TlsParser<'a> {
         // debug!("{:?}",r.data);
 
         // only parse some message types
-        match TlsRecordType::try_from_u8(r.hdr.record_type) {
-            Ok(TlsRecordType::ChangeCipherSpec) => (),
-            Ok(TlsRecordType::Handshake)        => (),
+        match TlsRecordType::from_u8(r.hdr.record_type) {
+            Some(TlsRecordType::ChangeCipherSpec) => (),
+            Some(TlsRecordType::Handshake)        => (),
             _ => return status,
         }
 
