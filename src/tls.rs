@@ -390,17 +390,17 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
                     debug!("ECDHE Parameters: {:?}",parsed);
                     info!("Temp key: using cipher {:?}",parsed.0.curve_params);
                     match &parsed.0.curve_params.params_content {
-                        &ECParametersContent::NamedCurve(curve_id) => {
-                            match named_curve_of_u16(curve_id) {
+                        &ECParametersContent::NamedGroup(group_id) => {
+                            match NamedGroup::from_u16(group_id) {
                                 None => (),
-                                Some(named_curve) => {
-                                    let key_bits = named_curve.key_bits().unwrap_or(0);
-                                    debug!("NamedCurve: {:?}, key={:?} bits",named_curve,key_bits);
+                                Some(named_group) => {
+                                    let key_bits = named_group.key_bits().unwrap_or(0);
+                                    debug!("NamedGroup: {:?}, key={:?} bits",named_group,key_bits);
                                     return Some(key_bits as u32);
                                 },
                             }
                         },
-                        c @ _ => info!("Request for key_bits of unknown curve {:?}",c),
+                        c @ _ => info!("Request for key_bits of unknown group {:?}",c),
                     }
                 },
                 e @ _ => error!("Could not parse ECDHE parameters {:?}",e),
