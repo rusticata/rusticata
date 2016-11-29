@@ -1,3 +1,15 @@
+//! TLS parser
+//!
+//! The TLS parser is based on the `tls-parser` crate to parse the handshake phase
+//! of a TLS connection. It stores the selected parameters (like the negociated ciphersuite,
+//! compression method, etc.) in the parser state.
+//!
+//! It handles defragmentation (TCP chunks, or TLS record and messages fragmentation), and
+//! updates the TLS state machine to detect invalid transitions (for ex, unexpected messages,
+//! or messages sent in wrong order).
+//!
+//! When the session becomes encrypted, messages are not parsed anymore.
+
 extern crate libc;
 
 use std;
@@ -19,28 +31,45 @@ use tls_parser::tls_extensions::*;
 use tls_parser::tls_sign_hash::*;
 use tls_parser::tls_states::{TlsState,tls_state_transition};
 
-// --------------------------------------------
-// example implementation: TLS parser
-
+/// TLS parser events
 #[repr(u32)]
 pub enum TlsParserEvents {
+    /// Heartbeat record wrong length (heartbleed attack)
     HeartbeatOverflow = 1,
+    /// Transition not allowed by TLS state machine
     InvalidState = 2,
 
+    /// Incomplete record
     RecordIncomplete = 3,
+    /// Record contains extra bytes after message(s)
     RecordWithExtraBytes = 4,
+    /// TLS record exceeds allowed size (2^24 bytes)
     RecordOverflow = 5,
 }
 
+/// TLS parser state
 pub struct TlsParser<'a> {
-    pub o: Option<&'a[u8]>,
+    _o: Option<&'a[u8]>,
 
+    /// Events raised during parsing. These events should be read (and removed)
+    /// by the client application after checking the parsing return value.
     pub events: Vec<u32>,
 
+    /// Selected compression method
+    ///
+    /// Only valid after the ServerHello message
     pub compression: Option<u8>,
+    /// Selected ciphersuite
+    ///
+    /// Only valid after the ServerHello message
     pub cipher: Option<&'a TlsCipherSuite>,
+    /// TLS state
     pub state: TlsState,
 
+    /// Exchanged key size
+    ///
+    /// This value is known only for Diffie-Hellman ciphersuites, and after
+    /// the ServerKeyExchange message.
     pub kx_bits: Option<u32>,
 
     /// TCP segments defragmentation buffer
@@ -49,13 +78,15 @@ pub struct TlsParser<'a> {
     /// Handshake defragmentation buffer
     pub buffer: Vec<u8>,
 
+    /// Flag set if the signature_algorithms extension was sent by the client
     pub has_signature_algorithms: bool,
 }
 
 impl<'a> TlsParser<'a> {
+    /// Allocation function for a new TLS parser instance
     pub fn new(i: &'a[u8]) -> TlsParser<'a> {
         TlsParser{
-            o:Some(i),
+            _o:Some(i),
             events:Vec::new(),
             compression:None,
             cipher:None,
@@ -118,6 +149,18 @@ impl<'a> TlsParser<'a> {
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         debug!("extensions: {:?}", ext);
                     },
+                    // TlsMessageHandshake::ServerHelloV13(ref content) => {
+                    //     // XXX Tls 1.3 ciphers are different
+                    //     self.cipher = TlsCipherSuite::from_id(content.cipher);
+                    //     match self.cipher {
+                    //         Some(c) => {
+                    //             debug!("Selected cipher: {:?}", c)
+                    //         },
+                    //         _ => warn!("Unknown cipher 0x{:x}", content.cipher),
+                    //     };
+                    //     let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
+                    //     debug!("extensions: {:?}", ext);
+                    // },
                     TlsMessageHandshake::Certificate(ref content) => {
                         debug!("cert chain length: {}",content.cert_chain.len());
                         for cert in &content.cert_chain {
@@ -152,6 +195,7 @@ impl<'a> TlsParser<'a> {
         let mut status = R_STATUS_OK;
 
         debug!("parse_record_level {}",r.data.len());
+        // debug!("{:?}",r.hdr);
         // debug!("{:?}",r.data);
 
         // only parse some message types
@@ -205,6 +249,7 @@ impl<'a> TlsParser<'a> {
         status
     }
 
+    /// Parsing function, handling TCP chunks fragmentation
     pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8]) -> u32 {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
@@ -294,6 +339,9 @@ pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
     }
 }
 
+/// Get the select ciphersuite
+///
+/// Returns the selected ciphersuite identifier, or 0 if not yet known.
 #[no_mangle]
 // pub extern fn rusticata_tls_get_cipher(ptr: *mut libc::c_char) -> u32
 // or
@@ -308,12 +356,18 @@ pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParser<'a>) -> u32
     }
 }
 
+/// Get the select compression method
+///
+/// Returns the selected compression method, or 0 if not yet known.
 #[no_mangle]
 pub extern fn rusticata_tls_get_compression<'a>(this: &TlsParser<'a>) -> u32
 {
     this.compression.unwrap_or(0) as u32
 }
 
+/// Get the exchanged key size
+///
+/// Returns the selected size of the key exchange, or 0 if not yet known.
 #[no_mangle]
 pub extern fn rusticata_tls_get_dh_key_bits<'a>(this: &TlsParser<'a>) -> u32
 {
@@ -323,7 +377,9 @@ pub extern fn rusticata_tls_get_dh_key_bits<'a>(this: &TlsParser<'a>) -> u32
 
 
 
-
+/// Get the ciphersuite IANA identifier
+///
+/// Given a ciphersuite name, return the IANA identifier, or 0 if not found
 #[no_mangle]
 pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
 {
@@ -335,6 +391,7 @@ pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
     }
 }
 
+/// Get the ciphersuite key exchange method
 #[no_mangle]
 pub extern fn rusticata_tls_kx_of_cipher(id: u16) -> u32
 {
@@ -344,6 +401,7 @@ pub extern fn rusticata_tls_kx_of_cipher(id: u16) -> u32
     }
 }
 
+/// Get the ciphersuite authentication method
 #[no_mangle]
 pub extern fn rusticata_tls_au_of_cipher(id: u16) -> u32
 {
@@ -353,6 +411,7 @@ pub extern fn rusticata_tls_au_of_cipher(id: u16) -> u32
     }
 }
 
+/// Get the ciphersuite encryption method
 #[no_mangle]
 pub extern fn rusticata_tls_enc_of_cipher(id: u16) -> u32
 {
@@ -362,6 +421,7 @@ pub extern fn rusticata_tls_enc_of_cipher(id: u16) -> u32
     }
 }
 
+/// Get the ciphersuite encryption mode
 #[no_mangle]
 pub extern fn rusticata_tls_encmode_of_cipher(id: u16) -> u32
 {
@@ -371,6 +431,7 @@ pub extern fn rusticata_tls_encmode_of_cipher(id: u16) -> u32
     }
 }
 
+/// Get the ciphersuite MAC method
 #[no_mangle]
 pub extern fn rusticata_tls_mac_of_cipher(id: u16) -> u32
 {

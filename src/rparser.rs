@@ -1,10 +1,27 @@
-// --------------------------------------------
-// common functions for all parsers
+//! common functions for all parsers
 
+/// Interface of all Rusticata parsers.
+///
+/// A object implementing the RParser trait is an instance of a parser,
+/// including the state (and all associated variables).
 pub trait RParser {
     // XXX static functions seem to cause problems with hashmaps
     // fn probe(&[u8]) -> bool;
 
+    /// Parsing function
+    ///
+    /// This function is called for every packet of a connection.
+    ///
+    /// Arguments:
+    ///
+    /// - `self`: the state (parser instance)
+    /// - a slice on the packet data
+    /// - the direction of this packet (0: to server, 1: to client)
+    ///
+    /// Return value:
+    ///
+    /// `R_STATUS_OK` or `R_STATUS_FAIL`, possibly or'ed with
+    /// `R_STATUS_EVENTS` if parsing events were raised.
     fn parse(&mut self, &[u8], u8) -> u32;
 }
 

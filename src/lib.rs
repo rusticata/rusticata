@@ -38,6 +38,18 @@ pub mod tls;
 
 use tls_parser::tls_ciphers::CIPHERS;
 
+/// Rusticata crate init function
+///
+/// This function **must** be called by the client application (Suricata) to initialize the
+/// rusticata library functions.
+///
+/// The argument is a pointer to a configuration structure, containing a magic number,
+/// a pointer to the C log function, and the log level of the client application.
+/// Rusticata will use the same log level, and configure a Rust Logger object to send logs
+/// to Suricata.
+///
+/// The lifetime of the configuration **must** be greater or equal to the one of the
+/// rusticata crate.
 #[no_mangle]
 pub extern "C" fn rusticata_init(config: &'static mut SuricataConfig) -> i32 {
     assert!(std::ptr::null_mut() != config);

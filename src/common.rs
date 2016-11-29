@@ -39,6 +39,7 @@ pub fn raw_sclog_message<'a,'b>(lvl: u32, msg: &'a str, file: &'b str, line: u32
     };
 }
 
+/// Send a log message to suricata, using the provided log level, message, file and line number
 #[macro_export]
 macro_rules! SCLogMessage (
   ($lvl:expr, $msg:expr, $file:expr, $line:expr) => (
@@ -51,36 +52,42 @@ macro_rules! SCLogMessage (
   );
 );
 
+/// Send a log message to suricata, using the Alert severity
 #[macro_export]
 macro_rules! SCLogAlert (
   ($msg:expr) => ( { SCLogMessage!(2,$msg); });
   ($msg:expr) => ( SCLogAlert!($msg););
 );
 
+/// Send a log message to suricata, using the Error severity
 #[macro_export]
 macro_rules! SCLogError (
   ($msg:expr) => ( { SCLogMessage!(4,$msg); });
   ($msg:expr) => ( SCLogError!($msg););
 );
 
+/// Send a log message to suricata, using the Warning severity
 #[macro_export]
 macro_rules! SCLogWarning (
   ($msg:expr) => ( { SCLogMessage!(5,$msg); });
   ($msg:expr) => ( SCLogWarning!($msg););
 );
 
+/// Send a log message to suricata, using the Notice severity
 #[macro_export]
 macro_rules! SCLogNotice (
   ($msg:expr) => ( { SCLogMessage!(6,$msg); });
   ($msg:expr) => ( SCLogNotice!($msg););
 );
 
+/// Send a log message to suricata, using the Info severity
 #[macro_export]
 macro_rules! SCLogInfo (
   ($msg:expr) => ( { SCLogMessage!(7,$msg); });
   ($msg:expr) => ( SCLogInfo!($msg););
 );
 
+/// Send a log message to suricata, using the Debug severity
 #[macro_export]
 macro_rules! SCLogDebug (
   ($msg:expr) => ( { SCLogMessage!(10,$msg); });
