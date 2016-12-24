@@ -328,11 +328,8 @@ r_implement_parse!(r_tls_parse,TlsParser);
 
 
 #[no_mangle]
-pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
-// pub extern fn r_tls_get_next_event<'a>(this: &mut TlsParser<'a>) -> u32
+pub extern fn r_tls_get_next_event(this: &mut TlsParser) -> u32
 {
-    assert!(!ptr.is_null());
-    let this: &mut TlsParser = unsafe { mem::transmute(ptr) };
     match this.events.pop() {
         None     => 0xffffffff,
         Some(ev) => ev,
@@ -343,13 +340,8 @@ pub extern fn r_tls_get_next_event(ptr: *mut libc::c_char) -> u32
 ///
 /// Returns the selected ciphersuite identifier, or 0 if not yet known.
 #[no_mangle]
-// pub extern fn rusticata_tls_get_cipher(ptr: *mut libc::c_char) -> u32
-// or
-pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParser<'a>) -> u32
-// but this gives a warning:
-// warning: generic functions must be mangled, #[warn(no_mangle_generic_items)] on by default
+pub extern fn rusticata_tls_get_cipher(this: &TlsParser) -> u32
 {
-    // let this: &Box<TlsParser> = unsafe { mem::transmute(ptr) };
     match this.cipher {
         None    => 0,
         Some(c) => c.id.into(),
@@ -360,7 +352,7 @@ pub extern fn rusticata_tls_get_cipher<'a>(this: &TlsParser<'a>) -> u32
 ///
 /// Returns the selected compression method, or 0 if not yet known.
 #[no_mangle]
-pub extern fn rusticata_tls_get_compression<'a>(this: &TlsParser<'a>) -> u32
+pub extern fn rusticata_tls_get_compression(this: &TlsParser) -> u32
 {
     this.compression.unwrap_or(0) as u32
 }
@@ -369,7 +361,7 @@ pub extern fn rusticata_tls_get_compression<'a>(this: &TlsParser<'a>) -> u32
 ///
 /// Returns the selected size of the key exchange, or 0 if not yet known.
 #[no_mangle]
-pub extern fn rusticata_tls_get_dh_key_bits<'a>(this: &TlsParser<'a>) -> u32
+pub extern fn rusticata_tls_get_dh_key_bits(this: &TlsParser) -> u32
 {
     this.kx_bits.unwrap_or(0) as u32
 }
