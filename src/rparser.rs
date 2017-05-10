@@ -35,10 +35,12 @@ pub static R_STATUS_FAIL : u32    = 0x0001;
 pub static R_STATUS_EV_MASK : u32 = 0x0f00;
 pub static R_STATUS_MASK : u32    = 0x00ff;
 
+#[macro_export]
 macro_rules! r_status_is_ok {
     ($status:expr) => { ($status & $crate::R_STATUS_MASK) == $crate::R_STATUS_MASK }
 }
 
+#[macro_export]
 macro_rules! r_status_has_events {
     ($status:expr) => { ($status & $crate::R_STATUS_EV_MASK) == $crate::R_STATUS_EVENTS }
 }
@@ -49,6 +51,7 @@ macro_rules! r_status_has_events {
 // This forces to use macros in addition to the trait, but at least provides a proper way of
 // encapsulating the translation of C variables to rust.
 
+#[macro_export]
 macro_rules! r_declare_state_new {
     ($f:ident, $ty:ident, $args:expr) => {
         #[no_mangle]
@@ -59,6 +62,7 @@ macro_rules! r_declare_state_new {
     }
 }
 
+#[macro_export]
 macro_rules! r_declare_state_free {
     ($f:ident, $ty:ident, $expr:expr) => {
         impl<'a> Drop for $ty<'a> {
@@ -79,29 +83,43 @@ macro_rules! r_declare_state_free {
     }
 }
 
+#[macro_export]
 macro_rules! r_implement_probe {
     ($f:ident, $g:ident) => {
         #[no_mangle]
         pub extern "C" fn $f(input: *const c_char, input_len: u32, _offset: *const c_char) -> u32 {
             let data_len = input_len as usize;
             let data : &[u8] = unsafe { std::slice::from_raw_parts(input as *mut u8, data_len) };
-            match $g(data) {
-                true  => 1,
-                false => 0,
+            let res = ::std::panic::catch_unwind(|| {
+                match $g(data) {
+                    true  => 1,
+                    false => 0,
+                }
+            });
+            match res {
+                Ok(v)  => v,
+                Err(_) => 0xffffffff,
             }
         }
     }
 }
 
+#[macro_export]
 macro_rules! r_implement_parse {
     ($f:ident, $g:ident) => {
         #[no_mangle]
         pub extern "C" fn $f(direction: u8, input: *const c_char, input_len: u32, ptr: *mut $g) -> u32 {
             let data_len = input_len as usize;
             let data : &[u8] = unsafe { std::slice::from_raw_parts(input as *mut u8, data_len) };
-            if ptr.is_null() { return 0xffff; };
-            let parser = unsafe { &mut *ptr };
-            parser.parse(data, direction)
+            if ptr.is_null() { return 0xffffffff; };
+            let res = ::std::panic::catch_unwind(|| {
+                let parser = unsafe { &mut *ptr };
+                parser.parse(data, direction)
+            });
+            match res {
+                Ok(v)  => v,
+                Err(_) => 0xffffffff,
+            }
         }
     }
 }
