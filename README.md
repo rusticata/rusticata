@@ -7,7 +7,7 @@
 Rusticata is a proof-of-concept implementation of using Rust parsers in
 Suricata.
 
-This project is base on:
+This project is based on:
 - [nom](https://github.com/Geal/nom) a Rust parser combinator framework
 - a nom [TLS parser](https://github.com/rusticata/tls-parser)
 
