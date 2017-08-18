@@ -7,12 +7,17 @@
 Rusticata is a proof-of-concept implementation of using Rust parsers in
 Suricata.
 
-This project is base on:
+This project is based on:
 - [nom](https://github.com/Geal/nom) a Rust parser combinator framework
-- a nom [TLS parser](https://github.com/rusticata/tls-parser)
+- [TLS parser](https://github.com/rusticata/tls-parser)
+- [IPsec parser](https://github.com/rusticata/ipsec-parser)
+- [NTP parser](https://github.com/rusticata/ntp-parser)
 
 **This is proof-of-concept code** to show to feasibility of the implementation of safe and efficient parsers
-in suricata.
+in suricata. The real parsing code is now part of suricata (starting from
+version 4.0), and must be configured using the `--enable-rust` flag.
+
+This project is now a playground for testing parsers, features and code.
 
 ## Build
 
@@ -22,53 +27,19 @@ Use `cargo install` to install the library, or set the `LD_LIBRARY_PATH` environ
 
 ## Testing with suricata
 
-You need the [suricata](https://github.com/rusticata/suricata) version from the [rusticata project](https://github.com/rusticata/rusticata)
-
-Checkout the `rust` branch.
+You need the [pcap-parse](https://github.com/rusticata/pcap-parse) tool.
 
 ```
-git clone https://github.com/rusticata/suricata.git
-cd suricata
-git checkout rust
+git clone https://github.com/rusticata/pcap-parse.git
+cd pcap-parse
 ```
 
-Configure suricata to enable the Rust app-layer:
-```
-./configure --enable-rusticata --with-librusticata-libraries=PATH_TO/rusticata/target/debug/
-```
-
-Build and install as usual.
-
-Enable the Rust app-layer in your suricata config:
-```
-app-layer:
-  protocols:
-    rust:
-      enabled: yes
-```
-
-For the moment, only the Rust TLS parser is enabled. Due to the fact that only one parser can handle a protocol,
-you have to disable the default TLS parser in suricata config:
-```
-app-layer:
-  protocols:
-    tls:
-      enabled: no
-```
-
-## Rules
-Here are a few examples of rules:
-```
-alert rust any any -> any any (msg:"Rust TLS Ciphers test match"; rust.tls.cipher:TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256; sid:123456; rev:1;)
-
-alert rust any any -> any any (msg:"Rust TLS heartbeat overflow attempt"; flow:established; app-layer-event:rust.overflow_heartbeat_message; flowint:rust.anomaly.count,+,1; classtype:protocol-command-decode; sid:123457; rev:1;)
-alert rust any any -> any any (msg:"Rust TLS invalid state"; flow:established; app-layer-event:rust.invalid_state; flowint:rust.anomaly.count,+,1; classtype:protocol-command-decode; sid:123458; rev:1;)
-```
+Use `cargo build` to build the tool.
 
 ## Debug
-The Rust layer uses the global log level from suricata. To get (really) verbose information about TLS parsing, run
+`pcap-parse` uses the `RUST_LOG` environment variable to configure its output verbosity.
 ```
-SC_LOG_LEVEL=Debug suricata -k none -vvvvv -r tls-example.pcapng
+RUST_LOG=rusticata=Debug cargo run -- -p tls -f file.pcapng
 ```
 
 
