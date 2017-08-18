@@ -13,7 +13,7 @@
 extern crate libc;
 
 use std;
-use std::mem;
+use std::{mem,str};
 use libc::c_char;
 use std::ffi::CStr;
 
@@ -72,7 +72,9 @@ pub struct TlsParser<'a> {
     /// the ServerKeyExchange message.
     pub kx_bits: Option<u32>,
 
-    /// TCP segments defragmentation buffer
+    pub sni: Vec<String>,
+
+    /// TCP chunks defragmentation buffer
     pub tcp_buffer: Vec<u8>,
 
     /// Handshake defragmentation buffer
@@ -92,6 +94,7 @@ impl<'a> TlsParser<'a> {
             cipher:None,
             state:TlsState::None,
             kx_bits: None,
+            sni: Vec::new(),
             // capacity is the amount of space allocated, which means elements can be added
             // without reallocating the vector
             tcp_buffer:Vec::with_capacity(16384),
@@ -129,6 +132,21 @@ impl<'a> TlsParser<'a> {
                                 for extension in l {
                                     match *extension {
                                         TlsExtension::SignatureAlgorithms(_) => self.has_signature_algorithms = true,
+                                        TlsExtension::SNI(ref v) => {
+                                            for &(t,sni) in v {
+                                                let s = String::from_utf8(sni.to_vec());
+                                                match s {
+                                                    Ok(name) => {
+                                                        debug!("SNI: {} {:?}",t,name);
+                                                        self.sni.push(name)
+                                                    },
+                                                    Err(e) => {
+                                                        warn!("Invalid UTF-8 data in SNI ({})",e);
+                                                        self.sni.push("<Invalid UTF-8 data>".to_string())
+                                                    },
+                                                };
+                                            }
+                                        },
                                         _ => (),
                                     }
                                 }
@@ -149,18 +167,18 @@ impl<'a> TlsParser<'a> {
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         debug!("extensions: {:?}", ext);
                     },
-                    // TlsMessageHandshake::ServerHelloV13(ref content) => {
-                    //     // XXX Tls 1.3 ciphers are different
-                    //     self.cipher = TlsCipherSuite::from_id(content.cipher);
-                    //     match self.cipher {
-                    //         Some(c) => {
-                    //             debug!("Selected cipher: {:?}", c)
-                    //         },
-                    //         _ => warn!("Unknown cipher 0x{:x}", content.cipher),
-                    //     };
-                    //     let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
-                    //     debug!("extensions: {:?}", ext);
-                    // },
+                    TlsMessageHandshake::ServerHelloV13(ref content) => {
+                        // XXX Tls 1.3 ciphers are different
+                        self.cipher = TlsCipherSuite::from_id(content.cipher);
+                        match self.cipher {
+                            Some(c) => {
+                                debug!("Selected cipher: {:?}", c)
+                            },
+                            _ => warn!("Unknown cipher 0x{:x}", content.cipher),
+                        };
+                        let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
+                        debug!("extensions: {:?}", ext);
+                    },
                     TlsMessageHandshake::Certificate(ref content) => {
                         debug!("cert chain length: {}",content.cert_chain.len());
                         for cert in &content.cert_chain {
@@ -254,6 +272,7 @@ impl<'a> TlsParser<'a> {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
         debug!("parse_tcp_level ({})",i.len());
+        debug!("defrag buffer size: {}",self.tcp_buffer.len());
         // debug!("{:?}",i);
         // Check if TCP data is being defragmented
         let tcp_buffer = match self.tcp_buffer.len() {

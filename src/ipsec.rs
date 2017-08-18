@@ -12,18 +12,20 @@ use num_traits::cast::FromPrimitive;
 use nom::IResult;
 
 #[derive(Debug,PartialEq)]
-struct SimpleProposal {
-    enc: u16,
-    prf: u16,
-    int: u16,
-    dhg: u16,
-    esn: u16,
+pub struct SimpleProposal {
+    pub enc: u16,
+    pub prf: u16,
+    pub int: u16,
+    pub dhg: u16,
+    pub esn: u16,
 }
 
 pub struct IPsecParser<'a> {
     _name: Option<&'a[u8]>,
 
-    client_proposals: Vec<SimpleProposal>,
+    pub client_proposals: Vec<SimpleProposal>,
+
+    pub dh_group: Option<IkeTransformDHType>,
 }
 
 impl<'a> RParser for IPsecParser<'a> {
@@ -44,7 +46,14 @@ impl<'a> RParser for IPsecParser<'a> {
                                         self.add_client_proposals(prop);
                                     }
                                 },
-                                _ => (),
+                                IkeV2PayloadContent::KE(ref kex) => {
+                                    self.dh_group = IkeTransformDHType::from_u16(kex.dh_group);
+                                    // XXX if self.dh_group == None, raise decoder event
+                                    debug!("KEX {}/{:?}", kex.dh_group, self.dh_group);
+                                },
+                                _ => {
+                                    debug!("Unknown payload content {:?}", payload.content);
+                                },
                             }
                         }
                     },
@@ -62,6 +71,7 @@ impl<'a> IPsecParser<'a> {
         IPsecParser{
             _name: Some(name),
             client_proposals: Vec::new(),
+            dh_group: None,
         }
     }
 

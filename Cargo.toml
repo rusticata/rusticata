@@ -15,11 +15,22 @@ crate-type = ["dylib"]
 [dependencies]
 libc = "0.2.0"
 log = "0.3.6"
-nom = {version = "^2.0", features=["verbose-errors"] }
-# tls-parser = "0.2.1"
-# ntp-parser = "0.1.2"
-tls-parser = { git = "https://github.com/rusticata/tls-parser.git" }
-ntp-parser = { git = "https://github.com/rusticata/ntp-parser.git" }
-ipsec-parser = { git = "https://github.com/rusticata/ipsec-parser.git" }
+nom = {version = "^3.0", features=["verbose-errors"] }
 enum_primitive = "0.1.0"
 num-traits = "0.1.36"
+# tls-parser = "^0.5"
+ntp-parser = "^0.1"
+# ipsec-parser = "^0.1"
+
+[dependencies.ipsec-parser]
+# path = "../ipsec-parser"
+git = "https://github.com/rusticata/ipsec-parser.git"
+
+# [dependencies.ntp-parser]
+# path = "../ntp-parser"
+# git = "https://github.com/rusticata/ntp-parser.git"
+# 
+[dependencies.tls-parser]
+# path = "../tls-parser"
+git = "https://github.com/rusticata/tls-parser.git"
+
