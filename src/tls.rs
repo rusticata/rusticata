@@ -274,6 +274,10 @@ impl<'a> TlsParser<'a> {
         debug!("parse_tcp_level ({})",i.len());
         debug!("defrag buffer size: {}",self.tcp_buffer.len());
         // debug!("{:?}",i);
+        // do not parse if session is encrypted
+        if self.state == TlsState::ClientChangeCipherSpec {
+            return status;
+        };
         // Check if TCP data is being defragmented
         let tcp_buffer = match self.tcp_buffer.len() {
             0 => i,

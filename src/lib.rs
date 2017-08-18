@@ -12,6 +12,7 @@ extern crate num_traits;
 
 extern crate ipsec_parser;
 extern crate ntp_parser;
+extern crate ssh_parser;
 extern crate tls_parser;
 
 const SURICATA_RUST_MAGIC : u32 = 0x1234;
@@ -32,6 +33,9 @@ pub mod ipsec;
 
 pub use ntp::*;
 pub mod ntp;
+
+mod ssh;
+pub use ssh::SSHParser;
 
 pub use tls::*;
 pub mod tls;
