@@ -1,14 +1,20 @@
 use std::str;
 use nom::{IResult,HexDisplay};
-use ssh_parser::ssh;
+use ssh_parser::{ssh,SshPacket};
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
 
+#[derive(Debug,PartialEq)]
 enum SSHConnectionState {
     Start,
-    ClientIdent,
-    ServerIdent,
-    Next,
+    CIdent,
+    SIdent,
+    CKexInit,
+    SKexInit,
+    CKexDH,
+    SKexDH,
+
+    Established,
 
     Error
 }
@@ -19,6 +25,27 @@ pub struct SSHParser<'a> {
     state: SSHConnectionState,
     buffer_clt: Vec<u8>,
     buffer_srv: Vec<u8>,
+}
+
+fn pretty_print_ssh_packet(pkt: &(SshPacket,&[u8])) {
+    match pkt.0 {
+        SshPacket::KeyExchange(ref kex) => {
+            debug!("kex algs: {:?}", kex.get_kex_algs());
+            debug!("server_host_key_algs: {:?}", kex.get_server_host_key_algs());
+            debug!("encr_algs_client_to_server: {:?}", kex.get_encr_algs_client_to_server());
+            debug!("encr_algs_server_to_client: {:?}", kex.get_encr_algs_server_to_client());
+            debug!("mac_algs_client_to_server: {:?}", kex.get_mac_algs_client_to_server());
+            debug!("mac_algs_server_to_client: {:?}", kex.get_mac_algs_server_to_client());
+            debug!("comp_algs_client_to_server: {:?}", kex.get_comp_algs_client_to_server());
+            debug!("comp_algs_server_to_client: {:?}", kex.get_comp_algs_server_to_client());
+            debug!("langs_algs_client_to_server: {:?}", kex.get_langs_client_to_server());
+            debug!("langs_algs_client_to_server: {:?}", kex.langs_client_to_server);
+            debug!("langs_algs_server_to_client: {:?}", kex.get_langs_server_to_client());
+            debug!("langs_algs_server_to_client: {:?}", kex.langs_server_to_client);
+            // XXX etc.
+        },
+        _ => (),
+    }
 }
 
 impl<'a> SSHParser<'a> {
@@ -45,8 +72,8 @@ impl<'a> SSHParser<'a> {
                 }
                 debug!("parse_ssh_identification: {:?}",res);
                 self.state = match self.state {
-                    SSHConnectionState::Start       => SSHConnectionState::ClientIdent,
-                    SSHConnectionState::ClientIdent => SSHConnectionState::ServerIdent,
+                    SSHConnectionState::Start       => SSHConnectionState::CIdent,
+                    SSHConnectionState::CIdent      => SSHConnectionState::SIdent,
                     _ => { return R_STATUS_FAIL; },
                 };
                 info!("protocol\n{}", res.proto.to_hex(16));
@@ -64,6 +91,10 @@ impl<'a> SSHParser<'a> {
         debug!("parse_ssh_packet direction: {}", direction);
         debug!("\tbuffer_clt size: {}", self.buffer_clt.len());
         debug!("\tbuffer_srv size: {}", self.buffer_srv.len());
+        if self.state == SSHConnectionState::Established {
+            // stop following session when encrypted
+            return R_STATUS_OK;
+        }
         let mut v : Vec<u8>;
         // Check if a record is being defragmented
         let self_buffer =
@@ -81,6 +112,15 @@ impl<'a> SSHParser<'a> {
         match ssh::parse_ssh_packet(buf) {
             IResult::Done(rem,ref res) => {
                 debug!("parse_ssh_packet: {:?}",res);
+                pretty_print_ssh_packet(res);
+                self.state = match self.state {
+                    SSHConnectionState::SIdent        => SSHConnectionState::CKexInit,
+                    SSHConnectionState::CKexInit      => SSHConnectionState::SKexInit,
+                    SSHConnectionState::SKexInit      => SSHConnectionState::CKexDH,
+                    SSHConnectionState::CKexDH        => SSHConnectionState::SKexDH,
+                    SSHConnectionState::SKexDH        => SSHConnectionState::Established,
+                    _ => { return R_STATUS_FAIL; },
+                };
             },
             IResult::Incomplete(_e) => {
                 debug!("Defragmentation required (SSH packet): {:?}", _e);
@@ -99,12 +139,18 @@ impl<'a> SSHParser<'a> {
 
 impl<'a> RParser for SSHParser<'a> {
     fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
+        println!("SSH current state: {:?}", self.state);
         match self.state {
             SSHConnectionState::Start |
-            SSHConnectionState::ClientIdent  => self.parse_ident(i),
-            SSHConnectionState::ServerIdent |
-            SSHConnectionState::Next         => self.parse_packet(i,direction),
+            SSHConnectionState::CIdent       => self.parse_ident(i),
+            SSHConnectionState::SIdent |
+            SSHConnectionState::CKexInit |
+            SSHConnectionState::SKexInit |
+            SSHConnectionState::CKexDH |
+            SSHConnectionState::SKexDH |
+            SSHConnectionState::Established  => self.parse_packet(i,direction),
             SSHConnectionState::Error        => R_STATUS_FAIL,
+            _            => R_STATUS_FAIL,
         }
     }
 }
