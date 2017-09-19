@@ -22,6 +22,7 @@ num-traits = "0.1.36"
 ntp-parser = "^0.1"
 # ipsec-parser = "^0.1"
 # ssh-parser = "0.1"
+# radius-parser = "0.1"
 
 [dependencies.ipsec-parser]
 # path = "../ipsec-parser"
@@ -39,3 +40,6 @@ git = "https://github.com/rusticata/ssh-parser.git"
 # path = "../tls-parser"
 git = "https://github.com/rusticata/tls-parser.git"
 
+[dependencies.radius-parser]
+# path = "../radius-parser"
+git = "https://github.com/rusticata/radius-parser.git"
