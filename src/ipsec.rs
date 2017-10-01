@@ -37,7 +37,7 @@ impl<'a> RParser for IPsecParser<'a> {
                     return R_STATUS_OK;
                 }
                 match parse_ikev2_payload_list(rem,hdr.next_payload) {
-                    IResult::Done(_,ref p) => {
+                    IResult::Done(_,Ok(ref p)) => {
                         debug!("parse_ikev2_payload_with_type: {:?}",p);
                         for payload in p {
                             match payload.content {
@@ -50,6 +50,12 @@ impl<'a> RParser for IPsecParser<'a> {
                                     self.dh_group = IkeTransformDHType::from_u16(kex.dh_group);
                                     // XXX if self.dh_group == None, raise decoder event
                                     debug!("KEX {}/{:?}", kex.dh_group, self.dh_group);
+                                },
+                                IkeV2PayloadContent::Nonce(ref n) => {
+                                    debug!("Nonce: {:?}", n);
+                                },
+                                IkeV2PayloadContent::Notify(ref n) => {
+                                    debug!("Notify: {:?}", n);
                                 },
                                 _ => {
                                     debug!("Unknown payload content {:?}", payload.content);
