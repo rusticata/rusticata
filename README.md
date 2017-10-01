@@ -25,7 +25,7 @@ Run `cargo build` for a build in debug mode, `cargo build --release` for release
 
 Use `cargo install` to install the library, or set the `LD_LIBRARY_PATH` environment variable.
 
-## Testing with suricata
+## Testing
 
 You need the [pcap-parse](https://github.com/rusticata/pcap-parse) tool.
 
