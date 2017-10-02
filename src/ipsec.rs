@@ -27,6 +27,10 @@ impl<'a> RParser for IPsecParser<'a> {
                 if rem.len() == 0 && hdr.length == 28 {
                     return R_STATUS_OK;
                 }
+                // Rule 0: check version
+                if hdr.maj_ver != 2 || hdr.min_ver != 0 {
+                    warn!("Unknown header version: {}.{}", hdr.maj_ver, hdr.min_ver);
+                }
                 match parse_ikev2_payload_list(rem,hdr.next_payload) {
                     IResult::Done(_,Ok(ref p)) => {
                         debug!("parse_ikev2_payload_with_type: {:?}",p);
@@ -125,6 +129,23 @@ impl<'a> IPsecParser<'a> {
                             _ => (),
                         }
                     },
+                    &IkeV2Transform::Auth(ref auth) => {
+                        match auth {
+                            &IkeTransformAuthType::None => {
+                                warn!("'None' Auth transform proposed");
+                            },
+                            &IkeTransformAuthType::HmacMd5s96 |
+                            &IkeTransformAuthType::HmacSha1s96 |
+                            &IkeTransformAuthType::DesMac |
+                            &IkeTransformAuthType::KpdkMd5 |
+                            &IkeTransformAuthType::AesXCBC96 |
+                            &IkeTransformAuthType::HmacMd5s128 |
+                            &IkeTransformAuthType::HmacMd5s160 => {
+                                warn!("Weak auth: {:?}", auth);
+                            },
+                            _ => (),
+                        }
+                    },
                     &IkeV2Transform::DH(ref dh) => {
                         match dh {
                             &IkeTransformDHType::None => {
@@ -132,7 +153,8 @@ impl<'a> IPsecParser<'a> {
                             },
                             &IkeTransformDHType::Modp768 |
                             &IkeTransformDHType::Modp1024 |
-                            &IkeTransformDHType::Modp1024s160 => {
+                            &IkeTransformDHType::Modp1024s160 |
+                            &IkeTransformDHType::Modp1536 => {
                                 warn!("Weak DH: {:?}", dh);
                             },
                             _ => (),
@@ -150,6 +172,10 @@ impl<'a> IPsecParser<'a> {
             })
             {
                 warn!("No DH transform found");
+            }
+            // Rule 3: check if proposing AH ([RFC7296] section 3.3.1)
+            if p.protocol_id == 2 {
+                warn!("Proposal uses protocol AH - no confidentiality");
             }
             // finally
             self.client_proposals = client_proposals;
