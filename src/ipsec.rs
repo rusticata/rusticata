@@ -11,19 +11,10 @@ use num_traits::cast::FromPrimitive;
 
 use nom::IResult;
 
-#[derive(Debug,PartialEq)]
-pub struct SimpleProposal {
-    pub enc: u16,
-    pub prf: u16,
-    pub int: u16,
-    pub dhg: u16,
-    pub esn: u16,
-}
-
 pub struct IPsecParser<'a> {
     _name: Option<&'a[u8]>,
 
-    pub client_proposals: Vec<SimpleProposal>,
+    pub client_proposals : Vec<IkeV2Transform>,
 
     pub dh_group: Option<IkeTransformDHType>,
 }
@@ -112,48 +103,27 @@ impl<'a> IPsecParser<'a> {
                     warn!("\tTransform ID == 0 (choice left to responder)");
                 };
             }
-            // "uncompress" the IPsec ciphersuites proposals
-            // Despite the apparent complexity, the number of transforms should be small.
-            let mut prop_enc : Vec<u16> = Vec::new();
-            let mut prop_prf : Vec<u16> = Vec::new();
-            let mut prop_int : Vec<u16> = Vec::new();
-            let mut prop_dhg : Vec<u16> = Vec::new();
-            let mut prop_esn : Vec<u16> = Vec::new();
-            for ref xform in &p.transforms {
-                let xty = IkeTransformType::from_u8(xform.transform_type);
-                match xty {
-                    Some(IkeTransformType::EncryptionAlgorithm)     => prop_enc.push(xform.transform_id),
-                    Some(IkeTransformType::PseudoRandomFunction)    => prop_prf.push(xform.transform_id),
-                    Some(IkeTransformType::IntegrityAlgorithm)      => prop_int.push(xform.transform_id),
-                    Some(IkeTransformType::DiffieHellmanGroup)      => prop_dhg.push(xform.transform_id),
-                    Some(IkeTransformType::ExtendedSequenceNumbers) => prop_esn.push(xform.transform_id),
+            let client_proposals : Vec<IkeV2Transform> = p.transforms.iter().map(|x| x.into()).collect();
+            debug!("Client proposals\n{:?}",client_proposals);
+            for prop in &client_proposals {
+                match prop {
+                    &IkeV2Transform::DH(ref dh) => {
+                        match dh {
+                            &IkeTransformDHType::Modp768 |
+                            &IkeTransformDHType::Modp1024 |
+                            &IkeTransformDHType::Modp1024s160 => {
+                                warn!("Weak DH: {:?}", dh);
+                            },
+                            _ => (),
+                        }
+                    },
+                    &IkeV2Transform::Unknown(tx_type,tx_id) => {
+                        warn!("Unknown proposal: type={}, id={}", tx_type, tx_id);
+                    },
                     _ => (),
                 }
             }
-            if prop_int.len() == 0 { prop_int.push(IkeTransformAuthType::None as u16); }
-            if prop_dhg.len() == 0 { prop_int.push(IkeTransformDHType::None as u16); }
-            if prop_esn.len() == 0 { prop_esn.push(IkeTransformESNType::NoESN as u16); }
-            for enc in &prop_enc {
-                for prf in &prop_prf {
-                    for int in &prop_int {
-                        for dhg in &prop_dhg {
-                            for esn in &prop_esn {
-                                let item = SimpleProposal{
-                                    enc:*enc,
-                                    prf:*prf,
-                                    int:*int,
-                                    dhg:*dhg,
-                                    esn:*esn,
-                                };
-                                if ! self.client_proposals.contains(&item) {
-                                    self.client_proposals.push(item);
-                                }
-                            };
-                        };
-                    };
-                };
-            };
-            debug!("Proposals: {:?}",self.client_proposals);
+            self.client_proposals = client_proposals;
         }
     }
 }
