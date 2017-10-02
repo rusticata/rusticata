@@ -105,10 +105,31 @@ impl<'a> IPsecParser<'a> {
             }
             let client_proposals : Vec<IkeV2Transform> = p.transforms.iter().map(|x| x.into()).collect();
             debug!("Client proposals\n{:?}",client_proposals);
+            // Rule 1: warn on weak or unknown transforms
             for prop in &client_proposals {
                 match prop {
+                    &IkeV2Transform::Encryption(ref enc) => {
+                        match enc {
+                            &IkeTransformEncType::DesIV64 |
+                            &IkeTransformEncType::Des |
+                            &IkeTransformEncType::TripleDes |
+                            &IkeTransformEncType::Rc5 |
+                            &IkeTransformEncType::Idea |
+                            &IkeTransformEncType::Cast |
+                            &IkeTransformEncType::Blowfish |
+                            &IkeTransformEncType::TripleIdea |
+                            &IkeTransformEncType::DesIV32 |
+                            &IkeTransformEncType::Null => {
+                                warn!("Weak Encryption: {:?}", enc);
+                            },
+                            _ => (),
+                        }
+                    },
                     &IkeV2Transform::DH(ref dh) => {
                         match dh {
+                            &IkeTransformDHType::None => {
+                                warn!("'None' DH transform proposed");
+                            },
                             &IkeTransformDHType::Modp768 |
                             &IkeTransformDHType::Modp1024 |
                             &IkeTransformDHType::Modp1024s160 => {
@@ -123,6 +144,14 @@ impl<'a> IPsecParser<'a> {
                     _ => (),
                 }
             }
+            // Rule 2: check if no DH was proposed
+            if ! client_proposals.iter().any(|x| {
+                if let &IkeV2Transform::DH(_) = x { true } else { false }
+            })
+            {
+                warn!("No DH transform found");
+            }
+            // finally
             self.client_proposals = client_proposals;
         }
     }
