@@ -14,13 +14,14 @@ use nom::IResult;
 pub struct IPsecParser<'a> {
     _name: Option<&'a[u8]>,
 
-    pub client_proposals : Vec<IkeV2Transform>,
+    pub client_proposals : Vec<Vec<IkeV2Transform>>,
+    pub server_proposals : Vec<Vec<IkeV2Transform>>,
 
     pub dh_group: Option<IkeTransformDHType>,
 }
 
 impl<'a> RParser for IPsecParser<'a> {
-    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
+    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
         match parse_ikev2_header(i) {
             IResult::Done(rem,ref hdr) => {
                 debug!("parse_ikev2_header: {:?}",hdr);
@@ -37,9 +38,9 @@ impl<'a> RParser for IPsecParser<'a> {
                         for payload in p {
                             match payload.content {
                                 IkeV2PayloadContent::SA(ref prop) => {
-                                    if hdr.flags & IKEV2_FLAG_INITIATOR != 0 {
-                                        self.add_client_proposals(prop);
-                                    }
+                                    // if hdr.flags & IKEV2_FLAG_INITIATOR != 0 {
+                                        self.add_proposals(prop, direction);
+                                    // }
                                 },
                                 IkeV2PayloadContent::KE(ref kex) => {
                                     self.dh_group = IkeTransformDHType::from_u16(kex.dh_group);
@@ -72,11 +73,12 @@ impl<'a> IPsecParser<'a> {
         IPsecParser{
             _name: Some(name),
             client_proposals: Vec::new(),
+            server_proposals: Vec::new(),
             dh_group: None,
         }
     }
 
-    fn add_client_proposals(&mut self, prop: &Vec<IkeV2Proposal>) {
+    fn add_proposals(&mut self, prop: &Vec<IkeV2Proposal>, direction: u8) {
         debug!("num_proposals: {}",prop.len());
         for ref p in prop {
             debug!("proposal: {:?}",p);
@@ -107,10 +109,10 @@ impl<'a> IPsecParser<'a> {
                     warn!("\tTransform ID == 0 (choice left to responder)");
                 };
             }
-            let client_proposals : Vec<IkeV2Transform> = p.transforms.iter().map(|x| x.into()).collect();
-            debug!("Client proposals\n{:?}",client_proposals);
+            let proposals : Vec<IkeV2Transform> = p.transforms.iter().map(|x| x.into()).collect();
+            debug!("Proposals\n{:?}",proposals);
             // Rule 1: warn on weak or unknown transforms
-            for prop in &client_proposals {
+            for prop in &proposals {
                 match prop {
                     &IkeV2Transform::Encryption(ref enc) => {
                         match enc {
@@ -132,7 +134,9 @@ impl<'a> IPsecParser<'a> {
                     &IkeV2Transform::Auth(ref auth) => {
                         match auth {
                             &IkeTransformAuthType::None => {
-                                warn!("'None' Auth transform proposed");
+                                // Note: this could be expected with an AEAD encription alg.
+                                // See rule 4
+                                ()
                             },
                             &IkeTransformAuthType::HmacMd5s96 |
                             &IkeTransformAuthType::HmacSha1s96 |
@@ -167,7 +171,7 @@ impl<'a> IPsecParser<'a> {
                 }
             }
             // Rule 2: check if no DH was proposed
-            if ! client_proposals.iter().any(|x| {
+            if ! proposals.iter().any(|x| {
                 if let &IkeV2Transform::DH(_) = x { true } else { false }
             })
             {
@@ -177,9 +181,33 @@ impl<'a> IPsecParser<'a> {
             if p.protocol_id == 2 {
                 warn!("Proposal uses protocol AH - no confidentiality");
             }
-            // finally
-            self.client_proposals = client_proposals;
+            // Rule 4: lack of integrity is accepted only if using an AEAD proposal
+            // Look if no auth was proposed, including if proposal is Auth::None
+            if ! proposals.iter().any(|x| {
+                match x {
+                    &IkeV2Transform::Auth(IkeTransformAuthType::None) => false,
+                    &IkeV2Transform::Auth(_)                          => true,
+                    _                                                 => false,
+                }
+            })
+            {
+                if ! proposals.iter().any(|x| {
+                    if let &IkeV2Transform::Encryption(ref enc) = x {
+                        enc.is_aead()
+                    } else { false }
+                }) {
+                    warn!("No integrity transform found");
+                }
+            }
+            // Finally
+            if direction == TO_SERVER {
+                self.client_proposals.push(proposals);
+            } else {
+                self.server_proposals.push(proposals);
+            }
         }
+        debug!("client_proposals: {:?}", self.client_proposals);
+        debug!("server_proposals: {:?}", self.server_proposals);
     }
 }
 
