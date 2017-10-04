@@ -45,6 +45,11 @@ macro_rules! r_status_has_events {
     ($status:expr) => { ($status & $crate::R_STATUS_EV_MASK) == $crate::R_STATUS_EVENTS }
 }
 
+// Constants
+pub const TO_SERVER : u8 = 0;
+pub const TO_CLIENT : u8 = 1;
+
+
 // Helper macros
 // We can't define them (can we ?) in the trait, partly because of the 'no_mangle' and 'extern'
 // stuff.

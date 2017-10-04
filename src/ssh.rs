@@ -2,7 +2,7 @@ use std::str;
 use nom::{IResult,HexDisplay};
 use ssh_parser::{ssh,SshPacket};
 
-use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
+use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL,TO_SERVER};
 
 #[derive(Debug,PartialEq)]
 enum SSHConnectionState {
@@ -98,7 +98,7 @@ impl<'a> SSHParser<'a> {
         let mut v : Vec<u8>;
         // Check if a record is being defragmented
         let self_buffer =
-            if direction == 0 { &mut self.buffer_srv }
+            if direction == TO_SERVER { &mut self.buffer_srv }
             else { &mut self.buffer_clt };
         let buf = match self_buffer.len() {
             0 => i,
