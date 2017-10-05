@@ -13,6 +13,7 @@ extern crate num_traits;
 extern crate ipsec_parser;
 extern crate ntp_parser;
 extern crate radius_parser;
+extern crate snmp_parser;
 extern crate ssh_parser;
 extern crate tls_parser;
 
@@ -37,6 +38,9 @@ pub mod ntp;
 
 mod radius;
 pub use radius::RadiusParser;
+
+mod snmp;
+pub use snmp::SnmpParser;
 
 mod ssh;
 pub use ssh::SSHParser;

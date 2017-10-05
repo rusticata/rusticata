@@ -18,11 +18,12 @@ log = "0.3.6"
 nom = {version = "^3.0", features=["verbose-errors"] }
 enum_primitive = "0.1.0"
 num-traits = "0.1.36"
-# tls-parser = "^0.5"
-ntp-parser = "^0.1"
 # ipsec-parser = "^0.1"
-# ssh-parser = "0.1"
+ntp-parser = "^0.1"
 # radius-parser = "0.1"
+# snmp-parser = "0.1"
+# ssh-parser = "0.1"
+# tls-parser = "^0.5"
 
 [dependencies.ipsec-parser]
 # path = "../ipsec-parser"
@@ -32,6 +33,14 @@ git = "https://github.com/rusticata/ipsec-parser.git"
 # path = "../ntp-parser"
 # git = "https://github.com/rusticata/ntp-parser.git"
 
+[dependencies.radius-parser]
+# path = "../radius-parser"
+git = "https://github.com/rusticata/radius-parser.git"
+
+[dependencies.snmp-parser]
+# path = "../snmp-parser"
+git = "https://github.com/rusticata/snmp-parser.git"
+
 [dependencies.ssh-parser]
 # path = "../ssh-parser"
 git = "https://github.com/rusticata/ssh-parser.git"
@@ -39,7 +48,3 @@ git = "https://github.com/rusticata/ssh-parser.git"
 [dependencies.tls-parser]
 # path = "../tls-parser"
 git = "https://github.com/rusticata/tls-parser.git"
-
-[dependencies.radius-parser]
-# path = "../radius-parser"
-git = "https://github.com/rusticata/radius-parser.git"
