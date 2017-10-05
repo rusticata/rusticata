@@ -2,7 +2,7 @@ extern crate tls_parser;
 
 use tls_parser::*;
 
-#[macro_use] extern crate enum_primitive;
+extern crate enum_primitive;
 use enum_primitive::FromPrimitive;
 
 pub fn main() {

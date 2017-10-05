@@ -1,4 +1,3 @@
-use std::str;
 use nom::IResult;
 use snmp_parser::parse_snmp_v3;
 
@@ -18,7 +17,7 @@ impl<'a> SnmpV3Parser<'a> {
 
 
 impl<'a> RParser for SnmpV3Parser<'a> {
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
+    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
         match parse_snmp_v3(i) {
             IResult::Done(_rem,r) => {
                 debug!("parse_snmp_v3: {:?}", r);

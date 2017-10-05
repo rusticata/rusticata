@@ -1,5 +1,5 @@
-use std::str;
-use nom::{IResult,HexDisplay};
+use nom::IResult;
+// use nom::HexDisplay;
 use radius_parser::parse_radius_data;
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
@@ -29,6 +29,7 @@ impl<'a> RParser for RadiusParser<'a> {
     }
 }
 
+#[allow(dead_code)]
 pub fn radius_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
     match parse_radius_data(i) {

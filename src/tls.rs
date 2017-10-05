@@ -13,7 +13,7 @@
 extern crate libc;
 
 use std;
-use std::{mem,str};
+use std::mem;
 use libc::c_char;
 use std::ffi::CStr;
 

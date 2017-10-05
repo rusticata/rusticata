@@ -24,6 +24,7 @@ pub struct SuricataConfig {
     // other members
 }
 
+#[allow(non_upper_case_globals)]
 pub static mut suricata_config : Option<&'static SuricataConfig> = None;
 
 pub fn raw_sclog_message<'a,'b>(lvl: u32, msg: &'a str, file: &'b str, line: u32) {

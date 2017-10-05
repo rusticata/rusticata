@@ -211,6 +211,7 @@ impl<'a> IPsecParser<'a> {
     }
 }
 
+#[allow(dead_code)]
 fn ipsec_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
     true

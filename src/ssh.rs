@@ -1,4 +1,3 @@
-use std::str;
 use nom::{IResult,HexDisplay};
 use ssh_parser::{ssh,SshPacket};
 
@@ -150,11 +149,12 @@ impl<'a> RParser for SSHParser<'a> {
             SSHConnectionState::SKexDH |
             SSHConnectionState::Established  => self.parse_packet(i,direction),
             SSHConnectionState::Error        => R_STATUS_FAIL,
-            _            => R_STATUS_FAIL,
+            // _            => R_STATUS_FAIL,
         }
     }
 }
 
+#[allow(dead_code)]
 pub fn ssh_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
     true
