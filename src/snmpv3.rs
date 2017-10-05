@@ -1,40 +1,39 @@
 use std::str;
 use nom::IResult;
-use snmp_parser::parse_snmp_v1;
+use snmp_parser::parse_snmp_v3;
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
 
-pub struct SnmpParser<'a> {
+pub struct SnmpV3Parser<'a> {
     _name: Option<&'a[u8]>,
-    version: u8,
 }
 
-impl<'a> SnmpParser<'a> {
-    pub fn new(name: &'a[u8], version: u8) -> SnmpParser<'a> {
-        SnmpParser{
+impl<'a> SnmpV3Parser<'a> {
+    pub fn new(name: &'a[u8]) -> SnmpV3Parser<'a> {
+        SnmpV3Parser{
             _name: Some(name),
-            version: version,
         }
     }
 }
 
 
-impl<'a> RParser for SnmpParser<'a> {
+impl<'a> RParser for SnmpV3Parser<'a> {
     fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
-        match parse_snmp_v1(i) {
+        match parse_snmp_v3(i) {
             IResult::Done(_rem,r) => {
-                debug!("parse_snmp_v1: {:?}", r);
+                debug!("parse_snmp_v3: {:?}", r);
                 R_STATUS_OK
             },
             e @ _ => {
-                warn!("parse_snmp_v1 failed: {:?}", e);
+                warn!("parse_snmp_v3 failed: {:?}", e);
                 R_STATUS_FAIL
             },
         }
     }
 }
 
-pub fn snmp_probe(i: &[u8]) -> bool {
+#[allow(dead_code)]
+pub fn snmpv3_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
     true
 }

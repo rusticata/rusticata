@@ -41,6 +41,8 @@ pub use radius::RadiusParser;
 
 mod snmp;
 pub use snmp::SnmpParser;
+mod snmpv3;
+pub use snmpv3::SnmpV3Parser;
 
 mod ssh;
 pub use ssh::SSHParser;
