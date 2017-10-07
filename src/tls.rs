@@ -330,7 +330,7 @@ impl<'a> RParser for TlsParser<'a> {
     }
 }
 
-fn tls_probe(i: &[u8]) -> bool {
+pub fn tls_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
     // first byte is record type (between 0x14 and 0x17, 0x16 is handhake)
     // second is TLS version major (0x3)

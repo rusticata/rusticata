@@ -211,10 +211,24 @@ impl<'a> IPsecParser<'a> {
     }
 }
 
-#[allow(dead_code)]
-fn ipsec_probe(i: &[u8]) -> bool {
-    if i.len() <= 2 { return false; }
-    true
+pub fn ipsec_probe(i: &[u8]) -> bool {
+    if i.len() <= 20 { return false; }
+    match parse_ikev2_header(i) {
+        IResult::Done(_,ref hdr) => {
+            if hdr.maj_ver != 2 || hdr.min_ver != 0 {
+                debug!("ipsec_probe: could be ipsec, but with unsupported/invalid version {}.{}",
+                      hdr.maj_ver, hdr.min_ver);
+                return false;
+            }
+            if hdr.exch_type < 34 || hdr.exch_type > 37 {
+                debug!("ipsec_probe: could be ipsec, but with unsupported/invalid exchange type {}",
+                      hdr.exch_type);
+                return false;
+            }
+            true
+        }
+        _ => false,
+    }
 }
 
 r_declare_state_new!(r_ipsec_state_new,IPsecParser,b"IPsec state");

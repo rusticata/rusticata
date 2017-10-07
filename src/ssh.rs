@@ -138,7 +138,7 @@ impl<'a> SSHParser<'a> {
 
 impl<'a> RParser for SSHParser<'a> {
     fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
-        println!("SSH current state: {:?}", self.state);
+        debug!("SSH current state: {:?}", self.state);
         match self.state {
             SSHConnectionState::Start |
             SSHConnectionState::CIdent       => self.parse_ident(i),
@@ -154,9 +154,9 @@ impl<'a> RParser for SSHParser<'a> {
     }
 }
 
-#[allow(dead_code)]
 pub fn ssh_probe(i: &[u8]) -> bool {
-    if i.len() <= 2 { return false; }
-    true
+    if i.len() <= 4 { return false; }
+    if &i[..4] == b"SSH-" { return true; }
+    false
 }
 

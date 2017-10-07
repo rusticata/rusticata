@@ -33,9 +33,14 @@ impl<'a> RParser for SnmpParser<'a> {
     }
 }
 
-#[allow(dead_code)]
 pub fn snmp_probe(i: &[u8]) -> bool {
-    if i.len() <= 2 { return false; }
-    true
+    if i.len() <= 20 { return false; }
+    // XXX a better strategy would be to parse the enveloppe, then check the number of
+    // XXX items and the version
+    match (i[0],i[2],i[3],i[4]) {
+        (0x30,2,1,1) => true, // possibly SNMPv1
+        (0x30,2,1,2) => true, // possibly SNMPv2
+        _ => false,
+    }
 }
 

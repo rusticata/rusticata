@@ -29,8 +29,8 @@ pub use rparser::*;
 #[macro_use]
 pub mod rparser;
 
+mod ipsec;
 pub use ipsec::*;
-pub mod ipsec;
 
 pub use ntp::*;
 pub mod ntp;
@@ -39,12 +39,12 @@ mod radius;
 pub use radius::RadiusParser;
 
 mod snmp;
-pub use snmp::SnmpParser;
+pub use snmp::{SnmpParser,snmp_probe};
 mod snmpv3;
-pub use snmpv3::SnmpV3Parser;
+pub use snmpv3::{SnmpV3Parser,snmpv3_probe};
 
 mod ssh;
-pub use ssh::SSHParser;
+pub use ssh::{SSHParser,ssh_probe};
 
 pub use tls::*;
 pub mod tls;
