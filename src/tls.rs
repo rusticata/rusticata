@@ -104,7 +104,7 @@ impl<'a> TlsParser<'a> {
     }
 
     /// Message-level TLS parsing
-    fn parse_message_level(&mut self, msg: &TlsMessage) -> u32 {
+    pub fn parse_message_level(&mut self, msg: &TlsMessage) -> u32 {
         debug!("parse_message_level {:?}",msg);
         let mut status = R_STATUS_OK;
         if self.state == TlsState::ClientChangeCipherSpec {
@@ -208,7 +208,8 @@ impl<'a> TlsParser<'a> {
         status
     }
 
-    fn parse_record_level<'b>(&mut self, r: &TlsRawRecord<'b>) -> u32 {
+    /// Record-level TLS parsing
+    pub fn parse_record_level<'b>(&mut self, r: &TlsRawRecord<'b>) -> u32 {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
 
@@ -256,8 +257,9 @@ impl<'a> TlsParser<'a> {
                     status |= R_STATUS_EVENTS;
                 };
             }
-            IResult::Incomplete(_) => {
+            IResult::Incomplete(needed) => {
                 debug!("Defragmentation required (TLS record)");
+                debug!("Missing {:?} bytes",needed);
                 // Record is fragmented
                 self.buffer.extend_from_slice(r.data);
             },
@@ -302,8 +304,9 @@ impl<'a> TlsParser<'a> {
                     cur_i = rem;
                     status |= self.parse_record_level(r);
                 },
-                IResult::Incomplete(_) => {
+                IResult::Incomplete(needed) => {
                     debug!("Fragmentation required (TCP level)");
+                    debug!("Missing {:?} bytes",needed);
                     self.tcp_buffer.extend_from_slice(cur_i);
                     break;
                 },
