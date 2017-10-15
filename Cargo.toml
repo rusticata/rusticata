@@ -20,6 +20,7 @@ enum_primitive = "0.1.0"
 num-traits = "0.1.36"
 # ipsec-parser = "^0.1"
 ntp-parser = "^0.1"
+# openvpn-parser = "0.1"
 # radius-parser = "0.1"
 # snmp-parser = "0.1"
 # ssh-parser = "0.1"
@@ -33,6 +34,10 @@ git = "https://github.com/rusticata/ipsec-parser.git"
 # [dependencies.ntp-parser]
 # path = "../ntp-parser"
 # git = "https://github.com/rusticata/ntp-parser.git"
+
+[dependencies.openvpn-parser]
+# path = "../openvpn-parser"
+git = "https://github.com/rusticata/openvpn-parser.git"
 
 [dependencies.radius-parser]
 # path = "../radius-parser"

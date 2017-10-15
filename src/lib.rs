@@ -11,6 +11,7 @@ extern crate num_traits;
 
 extern crate ipsec_parser;
 extern crate ntp_parser;
+extern crate openvpn_parser;
 extern crate radius_parser;
 extern crate snmp_parser;
 extern crate ssh_parser;
@@ -35,6 +36,9 @@ pub use ipsec::*;
 
 pub use ntp::*;
 pub mod ntp;
+
+mod openvpn;
+pub use openvpn::{OpenVPNParser,openvpn_probe};
 
 mod radius;
 pub use radius::RadiusParser;
