@@ -24,6 +24,7 @@ ntp-parser = "^0.1"
 # snmp-parser = "0.1"
 # ssh-parser = "0.1"
 # tls-parser = "^0.5"
+# x509-parser = "0.1"
 
 [dependencies.ipsec-parser]
 # path = "../ipsec-parser"
@@ -48,3 +49,7 @@ git = "https://github.com/rusticata/ssh-parser.git"
 [dependencies.tls-parser]
 # path = "../tls-parser"
 git = "https://github.com/rusticata/tls-parser.git"
+
+[dependencies.x509-parser]
+# path = "../x509-parser"
+git = "https://github.com/rusticata/x509-parser.git"

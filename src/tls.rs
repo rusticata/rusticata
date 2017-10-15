@@ -22,6 +22,7 @@ use nom::*;
 use num_traits::FromPrimitive;
 
 use rparser::*;
+use x509_parser::x509_parser;
 
 use tls_parser::tls::{TlsMessage,TlsMessageHandshake,TlsRecordType,TlsRawRecord,parse_tls_raw_record,parse_tls_record_with_header};
 use tls_parser::tls_ciphers::*;
@@ -183,6 +184,18 @@ impl<'a> TlsParser<'a> {
                         debug!("cert chain length: {}",content.cert_chain.len());
                         for cert in &content.cert_chain {
                             debug!("cert: {:?}",cert);
+                            match x509_parser(cert.data) {
+                                IResult::Done(_rem,x509) => {
+                                    match x509.tbs_certificate() {
+                                        Ok(tbs) => {
+                                            debug!("X.509 Subject: {}",tbs.subject());
+                                            debug!("X.509 Serial: {:X}",tbs.serial().unwrap());
+                                        },
+                                        _       => warn!("Could not decode TBS certificate"),
+                                    }
+                                },
+                                _ => warn!("Could not decode X.509 certificate"),
+                            }
                         }
                     },
                     TlsMessageHandshake::ServerKeyExchange(ref content) => {

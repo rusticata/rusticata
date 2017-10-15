@@ -15,6 +15,7 @@ extern crate radius_parser;
 extern crate snmp_parser;
 extern crate ssh_parser;
 extern crate tls_parser;
+extern crate x509_parser;
 
 const SURICATA_RUST_MAGIC : u32 = 0x1234;
 
