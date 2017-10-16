@@ -38,7 +38,9 @@ pub use ntp::*;
 pub mod ntp;
 
 mod openvpn;
-pub use openvpn::{OpenVPNParser,openvpn_probe};
+pub use openvpn::{OpenVPNTCPParser,openvpn_tcp_probe};
+mod openvpn_udp;
+pub use openvpn_udp::{OpenVPNUDPParser,openvpn_udp_probe};
 
 mod radius;
 pub use radius::RadiusParser;

@@ -1,20 +1,20 @@
 use nom::IResult;
 use nom::HexDisplay;
-use openvpn_parser::{parse_openvpn_tcp,Payload};
+use openvpn_parser::{parse_openvpn_udp,Payload};
 use tls::TlsParser;
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
 
-pub struct OpenVPNTCPParser<'a> {
+pub struct OpenVPNUDPParser<'a> {
     _name: Option<&'a[u8]>,
     defrag_buf: Vec<u8>,
 
     tls_parser: TlsParser<'a>,
 }
 
-impl<'a> OpenVPNTCPParser<'a> {
-    pub fn new(name: &'a[u8]) -> OpenVPNTCPParser<'a> {
-        OpenVPNTCPParser{
+impl<'a> OpenVPNUDPParser<'a> {
+    pub fn new(name: &'a[u8]) -> OpenVPNUDPParser<'a> {
+        OpenVPNUDPParser{
             _name: Some(name),
             defrag_buf: Vec::new(),
             tls_parser: TlsParser::new(b"OpenVPN/TLS"),
@@ -23,13 +23,13 @@ impl<'a> OpenVPNTCPParser<'a> {
 }
 
 
-impl<'a> RParser for OpenVPNTCPParser<'a> {
+impl<'a> RParser for OpenVPNUDPParser<'a> {
     fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
         let mut cur_i = i;
         loop {
-            match parse_openvpn_tcp(cur_i) {
+            match parse_openvpn_udp(cur_i) {
                 IResult::Done(rem,r) => {
-                    debug!("parse_openvpn_tcp: {:?}", r);
+                    debug!("parse_openvpn_udp: {:?}", r);
                     if let Payload::Control(ref ctrl) = r.msg {
                         // XXX check number, and if packets needs to be reordered
                         self.defrag_buf.extend_from_slice(ctrl.payload);
@@ -39,7 +39,7 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
                     cur_i = rem;
                 },
                 e @ _ => {
-                    warn!("parse_openvpn_tcp failed: {:?}", e);
+                    warn!("parse_openvpn_udp failed: {:?}", e);
                     warn!("input buffer:\n{}",i.to_hex(16));
                     return R_STATUS_FAIL;
                 },
@@ -55,10 +55,10 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
     }
 }
 
-pub fn openvpn_tcp_probe(i: &[u8]) -> bool {
+pub fn openvpn_udp_probe(i: &[u8]) -> bool {
     if i.len() <= 20 { return false; }
     // XXX
-    if let IResult::Done(_,_) = parse_openvpn_tcp(i) { return true; }
+    if let IResult::Done(_,_) = parse_openvpn_udp(i) { return true; }
     return false;
 }
 
