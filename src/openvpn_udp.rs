@@ -24,7 +24,7 @@ impl<'a> OpenVPNUDPParser<'a> {
 
 
 impl<'a> RParser for OpenVPNUDPParser<'a> {
-    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
+    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
         let mut cur_i = i;
         loop {
             match parse_openvpn_udp(cur_i) {
@@ -48,7 +48,7 @@ impl<'a> RParser for OpenVPNUDPParser<'a> {
         if self.defrag_buf.len() > 0 {
             // inscpect TLS message
             debug!("TLS message:\n{}", self.defrag_buf.to_hex(16));
-            self.tls_parser.parse_tcp_level(&self.defrag_buf);
+            self.tls_parser.parse_tcp_level(&self.defrag_buf, direction);
             self.defrag_buf.clear();
         }
         R_STATUS_OK

@@ -283,7 +283,7 @@ impl<'a> TlsParser<'a> {
     }
 
     /// Parsing function, handling TCP chunks fragmentation
-    pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8]) -> u32 {
+    pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8], _direction:u8) -> u32 {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
         debug!("parse_tcp_level ({})",i.len());
@@ -342,7 +342,7 @@ impl<'a> RParser for TlsParser<'a> {
             return R_STATUS_OK;
         };
 
-        self.parse_tcp_level(i)
+        self.parse_tcp_level(i, direction)
     }
 }
 
