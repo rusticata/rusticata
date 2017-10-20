@@ -18,10 +18,13 @@ impl<'a> RadiusParser<'a> {
 
 
 impl<'a> RParser for RadiusParser<'a> {
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
+    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
         match parse_radius_data(i) {
             IResult::Done(rem,ref rad) => {
                 debug!("parse_radius_data: {:?}", rad);
+                if rem.len() > 0 {
+                    warn!("Extra bytes after Radius data");
+                }
                 R_STATUS_OK
             },
             _ => R_STATUS_FAIL,

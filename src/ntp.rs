@@ -19,6 +19,9 @@ impl<'a> RParser for NtpParser<'a> {
         match parse_ntp(i) {
             IResult::Done(rem,ref res) => {
                 debug!("parse_ntp: {:?}",res);
+                if rem.len() > 0 {
+                    warn!("Extra bytes after NTP data");
+                }
             },
             e @ _ => warn!("parse_ntp: {:?}",e),
         };

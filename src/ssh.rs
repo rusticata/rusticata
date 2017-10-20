@@ -69,6 +69,9 @@ impl<'a> SSHParser<'a> {
                         info!("{}", line.to_hex(16));
                     }
                 }
+                if rem.len() > 0 {
+                    warn!("Extra bytes after SSH ident data");
+                }
                 debug!("parse_ssh_identification: {:?}",res);
                 self.state = match self.state {
                     SSHConnectionState::Start       => SSHConnectionState::CIdent,
@@ -110,6 +113,8 @@ impl<'a> SSHParser<'a> {
         // info!("parsing:\n{}", buf.to_hex(16));
         match ssh::parse_ssh_packet(buf) {
             IResult::Done(rem,ref res) => {
+                // put back remaining data
+                self_buffer.extend_from_slice(rem);
                 debug!("parse_ssh_packet: {:?}",res);
                 pretty_print_ssh_packet(res);
                 self.state = match self.state {
