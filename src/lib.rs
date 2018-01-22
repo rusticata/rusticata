@@ -8,6 +8,9 @@ extern crate log;
 use log::LogLevelFilter;
 
 extern crate num_traits;
+extern crate itertools;
+
+extern crate md5;
 
 extern crate ipsec_parser;
 extern crate ntp_parser;
