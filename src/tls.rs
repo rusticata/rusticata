@@ -20,11 +20,14 @@ use std::ffi::CStr;
 use nom::*;
 
 use num_traits::FromPrimitive;
+use itertools::Itertools;
+
+use md5;
 
 use rparser::*;
 use x509_parser::x509_parser;
 
-use tls_parser::tls::{TlsMessage,TlsMessageHandshake,TlsRecordType,TlsRawRecord,parse_tls_raw_record,parse_tls_record_with_header};
+use tls_parser::tls::*;
 use tls_parser::tls_ciphers::*;
 use tls_parser::tls_dh::*;
 use tls_parser::tls_ec::*;
@@ -101,11 +104,12 @@ impl<'a> TlsParser<'a> {
             tcp_buffer:Vec::with_capacity(16384),
             buffer:Vec::with_capacity(16384),
             has_signature_algorithms:false,
+            ja3:None,
         }
     }
 
     /// Message-level TLS parsing
-    pub fn parse_message_level(&mut self, msg: &TlsMessage) -> u32 {
+    pub fn parse_message_level(&mut self, msg: &TlsMessage, direction:u8) -> u32 {
         debug!("parse_message_level {:?}",msg);
         let mut status = R_STATUS_OK;
         if self.state == TlsState::ClientChangeCipherSpec {
@@ -228,7 +232,7 @@ impl<'a> TlsParser<'a> {
     }
 
     /// Record-level TLS parsing
-    pub fn parse_record_level<'b>(&mut self, r: &TlsRawRecord<'b>) -> u32 {
+    pub fn parse_record_level<'b>(&mut self, r: &TlsRawRecord<'b>, direction:u8) -> u32 {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
 
@@ -268,7 +272,7 @@ impl<'a> TlsParser<'a> {
         match parse_tls_record_with_header(record_buffer,r.hdr.clone()) {
             IResult::Done(rem2,ref msg_list) => {
                 for msg in msg_list {
-                    status |= self.parse_message_level(msg);
+                    status |= self.parse_message_level(msg, direction);
                 };
                 if rem2.len() > 0 {
                     warn!("extra bytes in TLS record: {:?}",rem2);
@@ -289,7 +293,7 @@ impl<'a> TlsParser<'a> {
     }
 
     /// Parsing function, handling TCP chunks fragmentation
-    pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8], _direction:u8) -> u32 {
+    pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8], direction:u8) -> u32 {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
         debug!("parse_tcp_level ({})",i.len());
@@ -321,7 +325,7 @@ impl<'a> TlsParser<'a> {
                 IResult::Done(rem, ref r) => {
                     // debug!("rem: {:?}",rem);
                     cur_i = rem;
-                    status |= self.parse_record_level(r);
+                    status |= self.parse_record_level(r, direction);
                 },
                 IResult::Incomplete(needed) => {
                     debug!("Fragmentation required (TCP level)");
