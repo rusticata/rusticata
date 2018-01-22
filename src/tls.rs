@@ -251,9 +251,9 @@ impl<'a> TlsParser<'a> {
         // debug!("{:?}",r.data);
 
         // only parse some message types
-        match TlsRecordType::from_u8(r.hdr.record_type) {
-            Some(TlsRecordType::ChangeCipherSpec) => (),
-            Some(TlsRecordType::Handshake)        => (),
+        match r.hdr.record_type {
+            TlsRecordType::ChangeCipherSpec => (),
+            TlsRecordType::Handshake        => (),
             _ => return status,
         }
 
