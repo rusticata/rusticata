@@ -571,7 +571,7 @@ const GREASE_TABLE : &[u16] = &[
 
 /// SSLVersion,Cipher,SSLExtension,EllipticCurve,EllipticCurvePointFormat
 pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<TlsExtension>) -> String {
-    let mut ja3 = format!("{},",content.version);
+    let mut ja3 = format!("{},",u16::from(content.version));
 
     let ciphers = content.ciphers.iter().join("-");
     ja3.push_str(&ciphers);
