@@ -578,7 +578,8 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<
     ja3.push(',');
 
     let ext_str = extensions.iter()
-        .map(|x| TlsExtensionType::from(x) as u16)
+        .map(|x| TlsExtensionType::from(x))
+        .map(|x| u16::from(x))
         .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
         .join("-");
     ja3.push_str(&ext_str);
