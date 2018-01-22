@@ -1,7 +1,7 @@
 use nom::{IResult,HexDisplay};
 use ssh_parser::{ssh,SshPacket};
 
-use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL,TO_SERVER};
+use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL,STREAM_TOSERVER};
 
 #[derive(Debug,PartialEq)]
 enum SSHConnectionState {
@@ -100,7 +100,7 @@ impl<'a> SSHParser<'a> {
         let mut v : Vec<u8>;
         // Check if a record is being defragmented
         let self_buffer =
-            if direction == TO_SERVER { &mut self.buffer_srv }
+            if direction == STREAM_TOSERVER { &mut self.buffer_srv }
             else { &mut self.buffer_clt };
         let buf = match self_buffer.len() {
             0 => i,

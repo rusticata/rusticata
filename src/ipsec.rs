@@ -43,9 +43,10 @@ impl<'a> RParser for IPsecParser<'a> {
                                     // }
                                 },
                                 IkeV2PayloadContent::KE(ref kex) => {
-                                    self.dh_group = IkeTransformDHType::from_u16(kex.dh_group);
-                                    // XXX if self.dh_group == None, raise decoder event
-                                    debug!("KEX {}/{:?}", kex.dh_group, self.dh_group);
+                                    debug!("KEX {}/{:?}", kex.dh_group, IkeTransformDHType::from_u16(kex.dh_group));
+                                    if direction == STREAM_TOCLIENT {
+                                        self.dh_group = IkeTransformDHType::from_u16(kex.dh_group);
+                                    }
                                 },
                                 IkeV2PayloadContent::Nonce(ref n) => {
                                     debug!("Nonce: {:?}", n);
@@ -199,8 +200,10 @@ impl<'a> IPsecParser<'a> {
                     warn!("No integrity transform found");
                 }
             }
+            // Rule 5: Check if an integrity and no integrity are part of the same proposal ?
+            // XXX
             // Finally
-            if direction == TO_SERVER {
+            if direction == STREAM_TOSERVER {
                 self.client_proposals.push(proposals);
             } else {
                 self.server_proposals.push(proposals);

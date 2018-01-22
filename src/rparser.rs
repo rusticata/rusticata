@@ -46,8 +46,8 @@ macro_rules! r_status_has_events {
 }
 
 // Constants
-pub const TO_SERVER : u8 = 0;
-pub const TO_CLIENT : u8 = 1;
+pub const STREAM_TOSERVER : u8 = 0;
+pub const STREAM_TOCLIENT : u8 = 1;
 
 
 // Helper macros

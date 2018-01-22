@@ -181,6 +181,11 @@ impl<'a> TlsParser<'a> {
                         debug!("extensions: {:?}", ext);
                     },
                     TlsMessageHandshake::Certificate(ref content) => {
+                        if direction == STREAM_TOSERVER {
+                            debug!("Client certificate");
+                        } else {
+                            debug!("Server certificate");
+                        }
                         debug!("cert chain length: {}",content.cert_chain.len());
                         for cert in &content.cert_chain {
                             debug!("cert: {:?}",cert);
@@ -190,6 +195,7 @@ impl<'a> TlsParser<'a> {
                                         Ok(tbs) => {
                                             debug!("X.509 Subject: {}",tbs.subject());
                                             debug!("X.509 Serial: {:X}",tbs.serial().unwrap());
+                                            debug!("X.509 is CA?: {}",tbs.is_ca());
                                         },
                                         _       => warn!("Could not decode TBS certificate"),
                                     }
