@@ -62,7 +62,7 @@ pub struct TlsParser<'a> {
     /// Selected compression method
     ///
     /// Only valid after the ServerHello message
-    pub compression: Option<u8>,
+    pub compression: Option<TlsCompressionID>,
     /// Selected ciphersuite
     ///
     /// Only valid after the ServerHello message
@@ -171,7 +171,7 @@ impl<'a> TlsParser<'a> {
                     TlsMessageHandshake::ServerHello(ref content) => {
                         debug!("TLS ServerHello version=0x{:x}", content.version);
                         self.compression = Some(content.compression);
-                        self.cipher = TlsCipherSuite::from_id(content.cipher);
+                        self.cipher = content.cipher.get_ciphersuite();
                         match self.cipher {
                             Some(c) => {
                                 debug!("Selected cipher: {:?}", c)
@@ -184,7 +184,7 @@ impl<'a> TlsParser<'a> {
                     TlsMessageHandshake::ServerHelloV13(ref content) => {
                         debug!("TLS ServerHelloV13 version=0x{:x}", content.version);
                         // XXX Tls 1.3 ciphers are different
-                        self.cipher = TlsCipherSuite::from_id(content.cipher);
+                        self.cipher = content.cipher.get_ciphersuite();
                         match self.cipher {
                             Some(c) => {
                                 debug!("Selected cipher: {:?}", c)
@@ -413,7 +413,10 @@ pub extern fn rusticata_tls_get_cipher(this: &TlsParser) -> u32
 #[no_mangle]
 pub extern fn rusticata_tls_get_compression(this: &TlsParser) -> u32
 {
-    this.compression.unwrap_or(0) as u32
+    match this.compression {
+        None    => 0,
+        Some(c) => c.0 as u32
+    }
 }
 
 /// Get the exchanged key size
