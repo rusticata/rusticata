@@ -181,8 +181,8 @@ impl<'a> TlsParser<'a> {
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         debug!("extensions: {:?}", ext);
                     },
-                    TlsMessageHandshake::ServerHelloV13(ref content) => {
-                        debug!("TLS ServerHelloV13 version=0x{:x}", content.version);
+                    TlsMessageHandshake::ServerHelloV13Draft18(ref content) => {
+                        debug!("TLS ServerHelloV13Draft18 version=0x{:x}", content.version);
                         // XXX Tls 1.3 ciphers are different
                         self.cipher = content.cipher.get_ciphersuite();
                         match self.cipher {
