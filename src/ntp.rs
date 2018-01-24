@@ -37,9 +37,18 @@ impl<'a> NtpParser<'a> {
     }
 }
 
-fn ntp_probe(i: &[u8]) -> bool {
+pub fn ntp_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
-    true
+    match parse_ntp(i) {
+        IResult::Done(_,ref msg) => {
+            if msg.version == 3 || msg.version == 4 {
+                true
+            } else {
+                false
+            }
+        },
+        _ => false,
+    }
 }
 
 r_declare_state_new!(r_ntp_state_new,NtpParser,b"Ntp state");
