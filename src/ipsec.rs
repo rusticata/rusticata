@@ -7,17 +7,20 @@ use libc::c_char;
 use rparser::*;
 
 use ipsec_parser::*;
-use num_traits::cast::FromPrimitive;
 
 use nom::IResult;
 
 pub struct IPsecParser<'a> {
     _name: Option<&'a[u8]>,
 
+    /// The transforms proposed by the initiator
     pub client_proposals : Vec<Vec<IkeV2Transform>>,
+
+    /// The transforms selected by the responder
     pub server_proposals : Vec<Vec<IkeV2Transform>>,
 
-    pub dh_group: Option<IkeTransformDHType>,
+    /// The Diffie-Hellman group from the server KE message, if present.
+    pub dh_group: IkeTransformDHType,
 }
 
 impl<'a> RParser for IPsecParser<'a> {
@@ -43,9 +46,9 @@ impl<'a> RParser for IPsecParser<'a> {
                                     // }
                                 },
                                 IkeV2PayloadContent::KE(ref kex) => {
-                                    debug!("KEX {}/{:?}", kex.dh_group, IkeTransformDHType::from_u16(kex.dh_group));
+                                    debug!("KEX {:?}", kex.dh_group);
                                     if direction == STREAM_TOCLIENT {
-                                        self.dh_group = IkeTransformDHType::from_u16(kex.dh_group);
+                                        self.dh_group = kex.dh_group;
                                     }
                                 },
                                 IkeV2PayloadContent::Nonce(ref n) => {
@@ -75,7 +78,7 @@ impl<'a> IPsecParser<'a> {
             _name: Some(name),
             client_proposals: Vec::new(),
             server_proposals: Vec::new(),
-            dh_group: None,
+            dh_group: IkeTransformDHType::None,
         }
     }
 
@@ -85,26 +88,25 @@ impl<'a> IPsecParser<'a> {
             debug!("proposal: {:?}",p);
             debug!("num_transforms: {}",p.num_transforms);
             for ref xform in &p.transforms {
-                debug!("transform: {:?}",xform);
-                let xty = IkeTransformType::from_u8(xform.transform_type);
-                debug!("\ttype: {:?} / {}",xty,xform.transform_type);
-                match xty {
-                    Some(IkeTransformType::EncryptionAlgorithm) => {
-                        debug!("\tEncryptionAlgorithm: {:?}",IkeTransformEncType::from_u16(xform.transform_id));
+                debug!("transform: {:?}", xform);
+                debug!("\ttype: {:?}", xform.transform_type);
+                match xform.transform_type {
+                    IkeTransformType::EncryptionAlgorithm => {
+                        debug!("\tEncryptionAlgorithm: {:?}",IkeTransformEncType(xform.transform_id));
                     },
-                    Some(IkeTransformType::PseudoRandomFunction) => {
-                        debug!("\tPseudoRandomFunction: {:?}",IkeTransformPRFType::from_u16(xform.transform_id));
+                    IkeTransformType::PseudoRandomFunction => {
+                        debug!("\tPseudoRandomFunction: {:?}",IkeTransformPRFType(xform.transform_id));
                     },
-                    Some(IkeTransformType::IntegrityAlgorithm) => {
-                        debug!("\tIntegrityAlgorithm: {:?}",IkeTransformAuthType::from_u16(xform.transform_id));
+                    IkeTransformType::IntegrityAlgorithm => {
+                        debug!("\tIntegrityAlgorithm: {:?}",IkeTransformAuthType(xform.transform_id));
                     },
-                    Some(IkeTransformType::DiffieHellmanGroup) => {
-                        debug!("\tDiffieHellmanGroup: {:?}",IkeTransformDHType::from_u16(xform.transform_id));
+                    IkeTransformType::DiffieHellmanGroup => {
+                        debug!("\tDiffieHellmanGroup: {:?}",IkeTransformDHType(xform.transform_id));
                     },
-                    Some(IkeTransformType::ExtendedSequenceNumbers) => {
-                        debug!("\tExtendedSequenceNumbers: {:?}",IkeTransformESNType::from_u16(xform.transform_id));
+                    IkeTransformType::ExtendedSequenceNumbers => {
+                        debug!("\tExtendedSequenceNumbers: {:?}",IkeTransformESNType(xform.transform_id));
                     },
-                    _ => warn!("\tUnknown transform type {}",xform.transform_type),
+                    _ => warn!("\tUnknown transform type {:?}", xform.transform_type),
                 }
                 if xform.transform_id == 0 {
                     warn!("\tTransform ID == 0 (choice left to responder)");
@@ -116,57 +118,57 @@ impl<'a> IPsecParser<'a> {
             for prop in &proposals {
                 match prop {
                     &IkeV2Transform::Encryption(ref enc) => {
-                        match enc {
-                            &IkeTransformEncType::DesIV64 |
-                            &IkeTransformEncType::Des |
-                            &IkeTransformEncType::TripleDes |
-                            &IkeTransformEncType::Rc5 |
-                            &IkeTransformEncType::Idea |
-                            &IkeTransformEncType::Cast |
-                            &IkeTransformEncType::Blowfish |
-                            &IkeTransformEncType::TripleIdea |
-                            &IkeTransformEncType::DesIV32 |
-                            &IkeTransformEncType::Null => {
+                        match *enc {
+                            IkeTransformEncType::ENCR_DES_IV64 |
+                            IkeTransformEncType::ENCR_DES |
+                            IkeTransformEncType::ENCR_3DES |
+                            IkeTransformEncType::ENCR_RC5 |
+                            IkeTransformEncType::ENCR_IDEA |
+                            IkeTransformEncType::ENCR_CAST |
+                            IkeTransformEncType::ENCR_BLOWFISH |
+                            IkeTransformEncType::ENCR_3IDEA |
+                            IkeTransformEncType::ENCR_DES_IV32 |
+                            IkeTransformEncType::ENCR_NULL => {
                                 warn!("Weak Encryption: {:?}", enc);
                             },
                             _ => (),
                         }
                     },
                     &IkeV2Transform::Auth(ref auth) => {
-                        match auth {
-                            &IkeTransformAuthType::None => {
+                        match *auth {
+                            IkeTransformAuthType::NONE => {
                                 // Note: this could be expected with an AEAD encription alg.
                                 // See rule 4
                                 ()
                             },
-                            &IkeTransformAuthType::HmacMd5s96 |
-                            &IkeTransformAuthType::HmacSha1s96 |
-                            &IkeTransformAuthType::DesMac |
-                            &IkeTransformAuthType::KpdkMd5 |
-                            &IkeTransformAuthType::AesXCBC96 |
-                            &IkeTransformAuthType::HmacMd5s128 |
-                            &IkeTransformAuthType::HmacMd5s160 => {
+                            IkeTransformAuthType::AUTH_HMAC_MD5_96 |
+                            IkeTransformAuthType::AUTH_HMAC_SHA1_96 |
+                            IkeTransformAuthType::AUTH_DES_MAC |
+                            IkeTransformAuthType::AUTH_KPDK_MD5 |
+                            IkeTransformAuthType::AUTH_AES_XCBC_96 |
+                            IkeTransformAuthType::AUTH_HMAC_MD5_128 |
+                            IkeTransformAuthType::AUTH_HMAC_SHA1_160 => {
                                 warn!("Weak auth: {:?}", auth);
                             },
                             _ => (),
                         }
                     },
                     &IkeV2Transform::DH(ref dh) => {
-                        match dh {
-                            &IkeTransformDHType::None => {
+                        match *dh {
+                            IkeTransformDHType::None => {
                                 warn!("'None' DH transform proposed");
                             },
-                            &IkeTransformDHType::Modp768 |
-                            &IkeTransformDHType::Modp1024 |
-                            &IkeTransformDHType::Modp1024s160 |
-                            &IkeTransformDHType::Modp1536 => {
+                            IkeTransformDHType::Modp768 |
+                            IkeTransformDHType::Modp1024 |
+                            IkeTransformDHType::Modp1024s160 |
+                            IkeTransformDHType::Modp1536 => {
                                 warn!("Weak DH: {:?}", dh);
                             },
                             _ => (),
                         }
                     },
                     &IkeV2Transform::Unknown(tx_type,tx_id) => {
-                        warn!("Unknown proposal: type={}, id={}", tx_type, tx_id);
+                        warn!("Unknown proposal: type={}, id={}", tx_type.0, tx_id);
                     },
                     _ => (),
                 }
@@ -179,15 +181,15 @@ impl<'a> IPsecParser<'a> {
                 warn!("No DH transform found");
             }
             // Rule 3: check if proposing AH ([RFC7296] section 3.3.1)
-            if p.protocol_id == 2 {
+            if p.protocol_id == ProtocolID::AH {
                 warn!("Proposal uses protocol AH - no confidentiality");
             }
             // Rule 4: lack of integrity is accepted only if using an AEAD proposal
             // Look if no auth was proposed, including if proposal is Auth::None
             if ! proposals.iter().any(|x| {
-                match x {
-                    &IkeV2Transform::Auth(IkeTransformAuthType::None) => false,
-                    &IkeV2Transform::Auth(_)                          => true,
+                match *x {
+                    IkeV2Transform::Auth(IkeTransformAuthType::NONE) => false,
+                    IkeV2Transform::Auth(_)                          => true,
                     _                                                 => false,
                 }
             })
@@ -223,9 +225,9 @@ pub fn ipsec_probe(i: &[u8]) -> bool {
                       hdr.maj_ver, hdr.min_ver);
                 return false;
             }
-            if hdr.exch_type < 34 || hdr.exch_type > 37 {
+            if hdr.exch_type.0 < 34 || hdr.exch_type.0 > 37 {
                 debug!("ipsec_probe: could be ipsec, but with unsupported/invalid exchange type {}",
-                      hdr.exch_type);
+                      hdr.exch_type.0);
                 return false;
             }
             true
