@@ -1,6 +1,6 @@
 use nom::IResult;
 use nom::HexDisplay;
-use openvpn_parser::{parse_openvpn_udp,Payload};
+use openvpn_parser::*;
 use tls::TlsParser;
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
@@ -58,7 +58,22 @@ impl<'a> RParser for OpenVPNUDPParser<'a> {
 pub fn openvpn_udp_probe(i: &[u8]) -> bool {
     if i.len() <= 20 { return false; }
     // XXX
-    if let IResult::Done(_,_) = parse_openvpn_udp(i) { return true; }
-    return false;
+    match parse_openvpn_udp(i) {
+        IResult::Done(rem,pkt) => {
+            println!("pkt: {:?}", pkt);
+            println!("rem:\n{}", rem.to_hex(16));
+            match pkt.hdr.opcode {
+                P_CONTROL_V1 => {
+                    if rem.len() > 3 && &rem[0..1] == &[0x16, 0x03] { true }
+                    else { false }
+                },
+                P_ACK_V1 => {
+                    if rem.is_empty() { true } else { false }
+                },
+                _ => false,
+            }
+        },
+        _ => false,
+    }
 }
 
