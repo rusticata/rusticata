@@ -205,14 +205,10 @@ impl<'a> TlsParser<'a> {
                             debug!("cert: {:?}",cert);
                             match x509_parser(cert.data) {
                                 IResult::Done(_rem,x509) => {
-                                    match x509.tbs_certificate() {
-                                        Ok(tbs) => {
-                                            debug!("X.509 Subject: {}",tbs.subject());
-                                            debug!("X.509 Serial: {:X}",tbs.serial().unwrap());
-                                            debug!("X.509 is CA?: {}",tbs.is_ca());
-                                        },
-                                        _       => warn!("Could not decode TBS certificate"),
-                                    }
+                                    let tbs = &x509.tbs_certificate;
+                                    debug!("X.509 Subject: {}",tbs.subject);
+                                    debug!("X.509 Serial: {:X}",tbs.serial);
+                                    debug!("X.509 is CA?: {}",tbs.is_ca());
                                 },
                                 _ => warn!("Could not decode X.509 certificate"),
                             }
