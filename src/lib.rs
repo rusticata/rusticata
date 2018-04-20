@@ -12,7 +12,10 @@ extern crate itertools;
 
 extern crate md5;
 
+extern crate der_parser;
+
 extern crate ipsec_parser;
+extern crate kerberos_parser;
 extern crate ntp_parser;
 extern crate openvpn_parser;
 extern crate radius_parser;
@@ -33,6 +36,11 @@ pub mod logger;
 pub use rparser::*;
 #[macro_use]
 pub mod rparser;
+
+mod kerberos_tcp;
+pub use kerberos_tcp::{KerberosParserTCP,kerberos_probe_tcp};
+mod kerberos_udp;
+pub use kerberos_udp::{KerberosParserUDP,kerberos_probe_udp};
 
 mod ipsec;
 pub use ipsec::*;
