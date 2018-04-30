@@ -1,5 +1,6 @@
 use nom::IResult;
 use snmp_parser::parse_snmp_v1;
+use der_parser::{DerObjectContent,parse_der_sequence};
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
 
@@ -33,14 +34,37 @@ impl<'a> RParser for SnmpParser<'a> {
     }
 }
 
+// Read PDU sequence and extract version, if similar to SNMP definition
+pub fn parse_pdu_enveloppe_version(i:&[u8]) -> Option<u32> {
+    match parse_der_sequence(i) {
+        IResult::Done(_,x) => {
+            match x.content {
+                DerObjectContent::Sequence(ref v) => {
+                    if v.len() == 3 {
+                        match v[0].as_u32()  {
+                            Ok(0) => Some(1), // possibly SNMPv1
+                            Ok(1) => Some(2), // possibly SNMPv2c
+                            _     => None
+                        }
+                    } else if v.len() == 4 && v[0].as_u32() == Ok(3) {
+                        Some(3) // possibly SNMPv3
+                    } else {
+                        None
+                    }
+                },
+                _ => None
+            }
+        },
+        _ => None
+    }
+}
+
 pub fn snmp_probe(i: &[u8]) -> bool {
     if i.len() <= 20 { return false; }
-    // XXX a better strategy would be to parse the enveloppe, then check the number of
-    // XXX items and the version
-    match (i[0],i[2],i[3],i[4]) {
-        (0x30,2,1,1) => true, // possibly SNMPv1
-        (0x30,2,1,2) => true, // possibly SNMPv2
-        _ => false,
+    match parse_pdu_enveloppe_version(i) {
+        Some(1) |
+        Some(2)   => true,
+        _         => false,
     }
 }
 

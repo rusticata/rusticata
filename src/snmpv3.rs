@@ -2,6 +2,7 @@ use nom::IResult;
 use snmp_parser::parse_snmp_v3;
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
+use snmp::parse_pdu_enveloppe_version;
 
 pub struct SnmpV3Parser<'a> {
     _name: Option<&'a[u8]>,
@@ -33,11 +34,10 @@ impl<'a> RParser for SnmpV3Parser<'a> {
 
 pub fn snmpv3_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
-    // XXX a better strategy would be to parse the enveloppe, then check the number of
-    // XXX items and the version
-    match (i[0],i[2],i[3],i[4]) {
-        (0x30,2,1,3) => true, // possibly SNMPv3
-        _ => false,
+    match parse_pdu_enveloppe_version(i) {
+        Some(1) |
+        Some(2)   => true,
+        _         => false,
     }
 }
 
