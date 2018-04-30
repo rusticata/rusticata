@@ -427,19 +427,19 @@ pub extern fn rusticata_tls_get_dh_key_bits(this: &TlsParser) -> u32
 
 
 
-/// Get the ciphersuite IANA identifier
-///
-/// Given a ciphersuite name, return the IANA identifier, or 0 if not found
-#[no_mangle]
-pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
-{
-    let c_str = unsafe { CStr::from_ptr(value) };
-    let s = c_str.to_str().unwrap();
-    match TlsCipherSuite::from_name(s) {
-        Some(c) => c.id as u32,
-        None    => 0,
-    }
-}
+// /// Get the ciphersuite IANA identifier
+// ///
+// /// Given a ciphersuite name, return the IANA identifier, or 0 if not found
+// #[no_mangle]
+// pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
+// {
+//     let c_str = unsafe { CStr::from_ptr(value) };
+//     let s = c_str.to_str().unwrap();
+//     match TlsCipherSuite::from_name(s) {
+//         Some(c) => c.id as u32,
+//         None    => 0,
+//     }
+// }
 
 /// Get the ciphersuite key exchange method
 #[no_mangle]

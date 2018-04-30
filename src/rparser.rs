@@ -77,9 +77,9 @@ macro_rules! r_declare_state_free {
         }
 
         #[no_mangle]
-        pub extern fn $f(ptr: *mut libc::c_char)
+        pub unsafe extern fn $f(ptr: *mut libc::c_char)
         {
-            let b: Box<$ty> = unsafe { mem::transmute(ptr) };
+            let b: Box<$ty> = mem::transmute(ptr);
             // reference will be dropped automatically, and allocated memory
             // will be freed
             // but let's do it explicitly
