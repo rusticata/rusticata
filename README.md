@@ -4,20 +4,18 @@
 
 ## Overview
 
-Rusticata is a proof-of-concept implementation of using Rust parsers in
-Suricata.
+Rusticata is a test crate for network protocol parsers written in Rust.
 
-This project is based on:
-- [nom](https://github.com/Geal/nom) a Rust parser combinator framework
-- [TLS parser](https://github.com/rusticata/tls-parser)
-- [IPsec parser](https://github.com/rusticata/ipsec-parser)
-- [NTP parser](https://github.com/rusticata/ntp-parser)
-
-**This is proof-of-concept code** to show to feasibility of the implementation of safe and efficient parsers
+It was written to show to feasibility of the implementation of safe and efficient parsers
 in suricata. The real parsing code is now part of suricata (starting from
 version 4.0), and must be configured using the `--enable-rust` flag.
 
 This project is now a playground for testing parsers, features and code.
+
+
+This project is based on:
+- [nom](https://github.com/Geal/nom) a Rust parser combinator framework
+- Many parsers from the [rusticata project](https://github.com/rusticata)
 
 ## Build
 
