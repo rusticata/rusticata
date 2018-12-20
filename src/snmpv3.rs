@@ -35,8 +35,7 @@ impl<'a> RParser for SnmpV3Parser<'a> {
 pub fn snmpv3_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
     match parse_pdu_enveloppe_version(i) {
-        Some(1) |
-        Some(2)   => true,
+        Some(3)   => true,
         _         => false,
     }
 }
