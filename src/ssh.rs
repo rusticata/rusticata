@@ -1,4 +1,4 @@
-use nom::{IResult,HexDisplay};
+use nom::{Err,HexDisplay};
 use ssh_parser::{ssh,SshPacket};
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL,STREAM_TOSERVER};
@@ -59,7 +59,7 @@ impl<'a> SSHParser<'a> {
 
     fn parse_ident(&mut self, i: &[u8]) -> u32 {
         match ssh::parse_ssh_identification(i) {
-            IResult::Done(rem,(ref crap, ref res)) => {
+            Ok((rem,(ref crap, ref res))) => {
                 // In version 2.0, the SSH server is allowed to send an arbitrary number of
                 // UTF-8 lines before the final identification line containing the server
                 // version.
@@ -81,7 +81,7 @@ impl<'a> SSHParser<'a> {
                 info!("protocol\n{}", res.proto.to_hex(16));
                 info!("software\n{}", res.software.to_hex(16));
             },
-            e @ _ => {
+            e => {
                 warn!("parse_ssh_identification: {:?}",e);
                 self.state = SSHConnectionState::Error;
             },
@@ -112,7 +112,7 @@ impl<'a> SSHParser<'a> {
         };
         // info!("parsing:\n{}", buf.to_hex(16));
         match ssh::parse_ssh_packet(buf) {
-            IResult::Done(rem,ref res) => {
+            Ok((rem,ref res)) => {
                 // put back remaining data
                 self_buffer.extend_from_slice(rem);
                 debug!("parse_ssh_packet: {:?}",res);
@@ -126,11 +126,11 @@ impl<'a> SSHParser<'a> {
                     _ => { return R_STATUS_FAIL; },
                 };
             },
-            IResult::Incomplete(_e) => {
+            Err(Err::Incomplete(_e)) => {
                 debug!("Defragmentation required (SSH packet): {:?}", _e);
                 self_buffer.extend_from_slice(buf);
             },
-            e @ _ => {
+            e => {
                 warn!("parse_ssh_packet: {:?}",e);
                 self.state = SSHConnectionState::Error;
             },

@@ -15,17 +15,16 @@ extern crate libc;
 use std;
 use std::mem;
 use libc::c_char;
-use std::ffi::CStr;
 
 use nom::*;
 
-use num_traits::FromPrimitive;
+use num_traits::cast::FromPrimitive;
 use itertools::Itertools;
 
 use md5;
 
 use rparser::*;
-use x509_parser::x509_parser;
+use x509_parser::parse_x509_der;
 
 use tls_parser::tls::*;
 use tls_parser::tls_ciphers::*;
@@ -137,7 +136,10 @@ impl<'a> TlsParser<'a> {
                         debug!("TLS ClientHello version=0x{:x}", content.version);
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         match &ext {
-                            &IResult::Done(_,ref l) => {
+                            Ok((rem ,ref l)) => {
+                                if ! rem.is_empty() {
+                                    warn!("extensions not entirely parsed");
+                                }
                                 let ja3 = build_ja3_fingerprint(content, l);
                                 let digest = md5::compute(&ja3);
                                 debug!("JA3: {} --> {:x}", ja3, digest);
@@ -164,7 +166,7 @@ impl<'a> TlsParser<'a> {
                                     }
                                 }
                             },
-                            e @ _ => error!("Could not parse extentions: {:?}",e),
+                            e  => error!("Could not parse extentions: {:?}",e),
                         };
                         debug!("ext {:?}", ext);
                     },
@@ -180,6 +182,17 @@ impl<'a> TlsParser<'a> {
                         };
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         debug!("extensions: {:?}", ext);
+                        if let Ok((_,ref extensions)) = ext {
+                            if is_tls13(content, extensions) {
+                                debug!("TLS 1.3 found");
+                                // check ciphers
+                                self.cipher.map(|c| {
+                                    if c.kx != TlsCipherKx::Tls13 {
+                                        warn!("TLS 1.3 ServerHello with invalid cipher {:?}", c);
+                                    }
+                                });
+                            }
+                        }
                     },
                     TlsMessageHandshake::ServerHelloV13Draft18(ref content) => {
                         debug!("TLS ServerHelloV13Draft18 version=0x{:x}", content.version);
@@ -203,8 +216,8 @@ impl<'a> TlsParser<'a> {
                         debug!("cert chain length: {}",content.cert_chain.len());
                         for cert in &content.cert_chain {
                             debug!("cert: {:?}",cert);
-                            match x509_parser(cert.data) {
-                                IResult::Done(_rem,x509) => {
+                            match parse_x509_der(cert.data) {
+                                Ok((_rem,x509)) => {
                                     let tbs = &x509.tbs_certificate;
                                     debug!("X.509 Subject: {}",tbs.subject);
                                     debug!("X.509 Serial: {:X}",tbs.serial);
@@ -276,7 +289,7 @@ impl<'a> TlsParser<'a> {
         //
         // Parse record contents as plaintext
         match parse_tls_record_with_header(record_buffer,r.hdr.clone()) {
-            IResult::Done(rem2,ref msg_list) => {
+            Ok((rem2,ref msg_list)) => {
                 for msg in msg_list {
                     status |= self.parse_message_level(msg, direction);
                 };
@@ -286,13 +299,13 @@ impl<'a> TlsParser<'a> {
                     status |= R_STATUS_EVENTS;
                 };
             }
-            IResult::Incomplete(needed) => {
+            Err(Err::Incomplete(needed)) => {
                 debug!("Defragmentation required (TLS record)");
                 debug!("Missing {:?} bytes",needed);
                 // Record is fragmented
                 self.buffer.extend_from_slice(r.data);
             },
-            IResult::Error(e) => { warn!("parse_tls_record_with_header failed: {:?}",e); status |= R_STATUS_FAIL; },
+           Err(e) => { warn!("parse_tls_record_with_header failed: {:?}",e); status |= R_STATUS_FAIL; },
         };
 
         status
@@ -328,18 +341,18 @@ impl<'a> TlsParser<'a> {
         let mut cur_i = tcp_buffer;
         while cur_i.len() > 0 {
             match parse_tls_raw_record(cur_i) {
-                IResult::Done(rem, ref r) => {
+                Ok((rem, ref r)) => {
                     // debug!("rem: {:?}",rem);
                     cur_i = rem;
                     status |= self.parse_record_level(r, direction);
                 },
-                IResult::Incomplete(needed) => {
+                Err(Err::Incomplete(needed)) => {
                     debug!("Fragmentation required (TCP level)");
                     debug!("Missing {:?} bytes",needed);
                     self.tcp_buffer.extend_from_slice(cur_i);
                     break;
                 },
-                IResult::Error(e) => { warn!("Parsing failed: {:?}",e); break },
+                Err(e) => { warn!("Parsing failed: {:?}",e); break },
             }
         };
         status
@@ -497,12 +510,15 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
         TlsCipherKx::Ecdh    => {
             // Signed ECDH params
             match parse_content_and_signature(parameters,parse_ecdh_params,extended) {
-                IResult::Done(_,ref parsed) => {
+                Ok((_,ref parsed)) => {
                     debug!("ECDHE Parameters: {:?}",parsed);
                     info!("Temp key: using cipher {:?}",parsed.0.curve_params);
                     match &parsed.0.curve_params.params_content {
-                        &ECParametersContent::NamedGroup(group_id) => {
-                            match NamedGroup::from_u16(group_id) {
+                        &ECParametersContent::NamedGroup(group) => {
+                            // let key_bits = group.key_bits().unwrap_or(0);
+                            // debug!("NamedGroup: {}, key={:?} bits", group, key_bits);
+                            // return Some(key_bits as u32);
+                            match NamedGroup::from_u16(group) {
                                 None => (),
                                 Some(named_group) => {
                                     let key_bits = named_group.key_bits().unwrap_or(0);
@@ -511,34 +527,34 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
                                 },
                             }
                         },
-                        c @ _ => info!("Request for key_bits of unknown group {:?}",c),
+                        c => info!("Request for key_bits of unknown group {:?}",c),
                     }
                 },
-                e @ _ => error!("Could not parse ECDHE parameters {:?}",e),
+                e => error!("Could not parse ECDHE parameters {:?}",e),
             };
             ()
         },
         TlsCipherKx::Dhe => {
             // Signed DH params
             match parse_content_and_signature(parameters,parse_dh_params,extended) {
-                IResult::Done(_,ref parsed) => {
+                Ok((_,ref parsed)) => {
                     debug!("DHE Parameters: {:?}",parsed);
                     info!("Temp key: using DHE size_p={:?} bits",parsed.0.dh_p.len() * 8);
                     return Some((parsed.0.dh_p.len() * 8) as u32);
                 },
-                e @ _ => error!("Could not parse DHE parameters {:?}",e),
+                e => error!("Could not parse DHE parameters {:?}",e),
             };
             ()
         },
         TlsCipherKx::Dh => {
             // Anonymous DH params
             match parse_dh_params(parameters) {
-                IResult::Done(_,ref parsed) => {
+                Ok((_,ref parsed)) => {
                     debug!("ADH Parameters: {:?}",parsed);
                     info!("Temp key: using ADH size_p={:?} bits",parsed.dh_p.len() * 8);
                     return Some((parsed.dh_p.len() * 8) as u32);
                 },
-                e @ _ => error!("Could not parse ADH parameters {:?}",e),
+                e => error!("Could not parse ADH parameters {:?}",e),
             };
             ()
         },
@@ -588,6 +604,7 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<
         match ext {
             &TlsExtension::EllipticCurves(ref ec) => {
                 ja3.push_str(&ec.iter()
+                             // .map(|x| x.0)
                              .filter(|&x| !(GREASE_TABLE.iter().any(|g| g == x)))
                              .join("-"));
             },
@@ -606,4 +623,18 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<
     }
 
     ja3
+}
+
+fn is_tls13(_content: &TlsServerHelloContents, extensions: &Vec<TlsExtension>) -> bool {
+    // look extensions, find the TlsSupportedVersion
+    extensions.iter()
+        .find(|&ext| TlsExtensionType::SupportedVersions == ext.into())
+        .map(|ref ext| {
+            if let TlsExtension::SupportedVersions(ref versions) = ext {
+                versions.len() == 1 && versions[0] == TlsVersion::Tls13.0
+            } else {
+                false
+            }
+        })
+        .unwrap_or(false)
 }

@@ -1,5 +1,4 @@
-use nom::IResult;
-use snmp_parser::parse_snmp_v1;
+use snmp_parser::{parse_snmp_v1,parse_snmp_v2c};
 use der_parser::{DerObjectContent,parse_der_sequence};
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
@@ -21,12 +20,17 @@ impl<'a> SnmpParser<'a> {
 
 impl<'a> RParser for SnmpParser<'a> {
     fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
-        match parse_snmp_v1(i) {
-            IResult::Done(_rem,r) => {
+        let parser = match self._version {
+            0 => parse_snmp_v1,
+            1 => parse_snmp_v2c,
+            _ => return R_STATUS_FAIL,
+        };
+        match parser(i) {
+            Ok((_rem,r)) => {
                 debug!("parse_snmp_v1: {:?}", r);
                 R_STATUS_OK
             },
-            e @ _ => {
+            e => {
                 warn!("parse_snmp_v1 failed: {:?}", e);
                 R_STATUS_FAIL
             },
@@ -37,7 +41,7 @@ impl<'a> RParser for SnmpParser<'a> {
 // Read PDU sequence and extract version, if similar to SNMP definition
 pub fn parse_pdu_enveloppe_version(i:&[u8]) -> Option<u32> {
     match parse_der_sequence(i) {
-        IResult::Done(_,x) => {
+        Ok((_,x)) => {
             match x.content {
                 DerObjectContent::Sequence(ref v) => {
                     if v.len() == 3 {

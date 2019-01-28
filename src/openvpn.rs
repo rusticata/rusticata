@@ -1,5 +1,3 @@
-use nom::IResult;
-use nom::HexDisplay;
 use openvpn_parser::{parse_openvpn_tcp,Payload};
 use tls::TlsParser;
 
@@ -28,7 +26,7 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
         let mut cur_i = i;
         loop {
             match parse_openvpn_tcp(cur_i) {
-                IResult::Done(rem,r) => {
+                Ok((rem,r)) => {
                     debug!("parse_openvpn_tcp: {:?}", r);
                     if let Payload::Control(ref ctrl) = r.msg {
                         // XXX check number, and if packets needs to be reordered
@@ -38,16 +36,16 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
                     debug!("Remaining bytes: {}", rem.len());
                     cur_i = rem;
                 },
-                e @ _ => {
+                e => {
                     warn!("parse_openvpn_tcp failed: {:?}", e);
-                    warn!("input buffer:\n{}",i.to_hex(16));
+                    // warn!("input buffer:\n{}",i.to_hex(16));
                     return R_STATUS_FAIL;
                 },
             }
         }
         if self.defrag_buf.len() > 0 {
             // inscpect TLS message
-            debug!("TLS message:\n{}", self.defrag_buf.to_hex(16));
+            // debug!("TLS message:\n{}", self.defrag_buf.to_hex(16));
             self.tls_parser.parse_tcp_level(&self.defrag_buf, direction);
             self.defrag_buf.clear();
         }
@@ -58,7 +56,6 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
 pub fn openvpn_tcp_probe(i: &[u8]) -> bool {
     if i.len() <= 20 { return false; }
     // XXX
-    if let IResult::Done(_,_) = parse_openvpn_tcp(i) { return true; }
-    return false;
+    parse_openvpn_tcp(i).is_ok()
 }
 

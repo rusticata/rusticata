@@ -8,8 +8,6 @@ use rparser::*;
 
 use ntp_parser::*;
 
-use nom::IResult;
-
 pub struct NtpParser<'a> {
     _name: Option<&'a[u8]>,
 }
@@ -17,13 +15,13 @@ pub struct NtpParser<'a> {
 impl<'a> RParser for NtpParser<'a> {
     fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
         match parse_ntp(i) {
-            IResult::Done(rem,ref res) => {
+            Ok((rem,ref res)) => {
                 debug!("parse_ntp: {:?}",res);
                 if rem.len() > 0 {
                     warn!("Extra bytes after NTP data");
                 }
             },
-            e @ _ => warn!("parse_ntp: {:?}",e),
+            e => warn!("parse_ntp: {:?}",e),
         };
         R_STATUS_OK
     }
@@ -40,7 +38,7 @@ impl<'a> NtpParser<'a> {
 pub fn ntp_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
     match parse_ntp(i) {
-        IResult::Done(_,ref msg) => {
+        Ok((_,ref msg)) => {
             if msg.version == 3 || msg.version == 4 {
                 true
             } else {

@@ -8,8 +8,6 @@ use rparser::*;
 
 use ipsec_parser::*;
 
-use nom::IResult;
-
 pub struct IPsecParser<'a> {
     _name: Option<&'a[u8]>,
 
@@ -26,7 +24,7 @@ pub struct IPsecParser<'a> {
 impl<'a> RParser for IPsecParser<'a> {
     fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
         match parse_ikev2_header(i) {
-            IResult::Done(rem,ref hdr) => {
+            Ok((rem,ref hdr)) => {
                 debug!("parse_ikev2_header: {:?}",hdr);
                 if rem.len() == 0 && hdr.length == 28 {
                     return R_STATUS_OK;
@@ -36,7 +34,7 @@ impl<'a> RParser for IPsecParser<'a> {
                     warn!("Unknown header version: {}.{}", hdr.maj_ver, hdr.min_ver);
                 }
                 match parse_ikev2_payload_list(rem,hdr.next_payload) {
-                    IResult::Done(_,Ok(ref p)) => {
+                    Ok((_,Ok(ref p))) => {
                         debug!("parse_ikev2_payload_with_type: {:?}",p);
                         for payload in p {
                             match payload.content {
@@ -63,10 +61,10 @@ impl<'a> RParser for IPsecParser<'a> {
                             }
                         }
                     },
-                    e @ _ => warn!("parse_ikev2_payload_with_type: {:?}",e),
+                    e => warn!("parse_ikev2_payload_with_type: {:?}",e),
                 };
             },
-            e @ _ => warn!("parse_ikev2_header: {:?}",e),
+            e => warn!("parse_ikev2_header: {:?}",e),
         };
         R_STATUS_OK
     }
@@ -219,7 +217,7 @@ impl<'a> IPsecParser<'a> {
 pub fn ipsec_probe(i: &[u8]) -> bool {
     if i.len() <= 20 { return false; }
     match parse_ikev2_header(i) {
-        IResult::Done(_,ref hdr) => {
+        Ok((_,ref hdr)) => {
             if hdr.maj_ver != 2 || hdr.min_ver != 0 {
                 debug!("ipsec_probe: could be ipsec, but with unsupported/invalid version {}.{}",
                       hdr.maj_ver, hdr.min_ver);
