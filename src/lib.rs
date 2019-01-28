@@ -5,7 +5,7 @@ extern crate nom;
 #[macro_use]
 extern crate log;
 
-use log::LogLevelFilter;
+use log::LevelFilter;
 
 extern crate num_traits;
 extern crate itertools;
@@ -89,11 +89,11 @@ pub extern "C" fn rusticata_init(config: &'static mut SuricataConfig) -> i32 {
     assert_eq!(config.magic,SURICATA_RUST_MAGIC);
 
     let log_level = match config.log_level {
-        0...4 => LogLevelFilter::Error,
-        5 => LogLevelFilter::Warn,
-        6...7 => LogLevelFilter::Info,
-        8...11 => LogLevelFilter::Debug,
-        _ => LogLevelFilter::Off,
+        0...4  => LevelFilter::Error,
+        5      => LevelFilter::Warn,
+        6...7  => LevelFilter::Info,
+        8...11 => LevelFilter::Debug,
+        _      => LevelFilter::Off,
     };
 
     logger::init(log_level).unwrap();
