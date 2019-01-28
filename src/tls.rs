@@ -18,7 +18,6 @@ use libc::c_char;
 
 use nom::*;
 
-use num_traits::cast::FromPrimitive;
 use itertools::Itertools;
 
 use md5;
@@ -515,17 +514,9 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
                     info!("Temp key: using cipher {:?}",parsed.0.curve_params);
                     match &parsed.0.curve_params.params_content {
                         &ECParametersContent::NamedGroup(group) => {
-                            // let key_bits = group.key_bits().unwrap_or(0);
-                            // debug!("NamedGroup: {}, key={:?} bits", group, key_bits);
-                            // return Some(key_bits as u32);
-                            match NamedGroup::from_u16(group) {
-                                None => (),
-                                Some(named_group) => {
-                                    let key_bits = named_group.key_bits().unwrap_or(0);
-                                    debug!("NamedGroup: {:?}, key={:?} bits",named_group,key_bits);
-                                    return Some(key_bits as u32);
-                                },
-                            }
+                            let key_bits = group.key_bits().unwrap_or(0);
+                            debug!("NamedGroup: {}, key={:?} bits", group, key_bits);
+                            return Some(key_bits as u32);
                         },
                         c => info!("Request for key_bits of unknown group {:?}",c),
                     }
@@ -604,8 +595,8 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<
         match ext {
             &TlsExtension::EllipticCurves(ref ec) => {
                 ja3.push_str(&ec.iter()
-                             // .map(|x| x.0)
-                             .filter(|&x| !(GREASE_TABLE.iter().any(|g| g == x)))
+                             .map(|x| x.0)
+                             .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
                              .join("-"));
             },
             _ => (),
@@ -631,7 +622,7 @@ fn is_tls13(_content: &TlsServerHelloContents, extensions: &Vec<TlsExtension>) -
         .find(|&ext| TlsExtensionType::SupportedVersions == ext.into())
         .map(|ref ext| {
             if let TlsExtension::SupportedVersions(ref versions) = ext {
-                versions.len() == 1 && versions[0] == TlsVersion::Tls13.0
+                versions.len() == 1 && versions[0] == TlsVersion::Tls13
             } else {
                 false
             }

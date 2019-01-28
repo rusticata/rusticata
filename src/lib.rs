@@ -7,7 +7,6 @@ extern crate log;
 
 use log::LevelFilter;
 
-extern crate num_traits;
 extern crate itertools;
 
 extern crate md5;
