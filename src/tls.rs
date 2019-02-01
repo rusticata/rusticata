@@ -179,6 +179,9 @@ impl<'a> TlsParser<'a> {
                             },
                             _ => warn!("Unknown cipher 0x{:x}", content.cipher),
                         };
+                        if content.version.0 < 0x0303 { // "signature_algorithms" was introduced with TLS 1.2
+                            self.has_signature_algorithms = false;
+                        }
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         debug!("extensions: {:?}", ext);
                         if let Ok((_,ref extensions)) = ext {
