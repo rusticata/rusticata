@@ -1,4 +1,4 @@
-use openvpn_parser::{parse_openvpn_tcp,Payload};
+use openvpn_parser::{parse_openvpn_tcp,Payload,P_CONTROL_V1,P_ACK_V1};
 use tls::TlsParser;
 
 use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
@@ -56,6 +56,20 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
 pub fn openvpn_tcp_probe(i: &[u8]) -> bool {
     if i.len() <= 20 { return false; }
     // XXX
-    parse_openvpn_tcp(i).is_ok()
+    match parse_openvpn_tcp(i) {
+        Ok((rem,pkt)) => {
+            match pkt.hdr.opcode {
+                P_CONTROL_V1 => {
+                    if rem.len() > 3 && &rem[0..1] == &[0x16, 0x03] { true }
+                    else { false }
+                },
+                P_ACK_V1 => {
+                    if rem.is_empty() { true } else { false }
+                },
+                _ => false,
+            }
+        },
+        _ => false,
+    }
 }
 
