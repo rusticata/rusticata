@@ -58,11 +58,11 @@ pub fn openvpn_udp_probe(i: &[u8]) -> bool {
     match parse_openvpn_udp(i) {
         Ok((rem,pkt)) => {
             match pkt.hdr.opcode {
-                P_CONTROL_V1 => {
+                Opcode::P_CONTROL_V1 => {
                     if rem.len() > 3 && &rem[0..1] == &[0x16, 0x03] { true }
                     else { false }
                 },
-                P_ACK_V1 => {
+                Opcode::P_ACK_V1 => {
                     if rem.is_empty() { true } else { false }
                 },
                 _ => false,

@@ -23,7 +23,7 @@ der-parser = "1.0"
 ipsec-parser = "0.4.0"
 kerberos-parser = "0.2"
 ntp-parser = "0.3"
-openvpn-parser = { git="https://github.com/rusticata/openvpn-parser.git", version="0.3" }
+openvpn-parser = "0.3"
 radius-parser = "0.2"
 snmp-parser = "0.3"
 ssh-parser = { git="https://github.com/rusticata/ssh-parser.git", version="0.2" }
