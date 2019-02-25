@@ -4,7 +4,7 @@
 ///
 /// A object implementing the RParser trait is an instance of a parser,
 /// including the state (and all associated variables).
-pub trait RParser {
+pub trait RParser : Send + Sync {
     // XXX static functions seem to cause problems with hashmaps
     // fn probe(&[u8]) -> bool;
 
