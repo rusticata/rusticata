@@ -1,7 +1,13 @@
 use nom::{Err,HexDisplay};
 use ssh_parser::{ssh,SshPacket};
 
-use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL,STREAM_TOSERVER};
+use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL,STREAM_TOSERVER};
+
+pub struct SSHBuilder {}
+impl RBuilder for SSHBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(SSHParser::new(b"SSH")) }
+    fn probe(&self, i:&[u8]) -> bool { ssh_probe(i) }
+}
 
 #[derive(Debug,PartialEq)]
 enum SSHConnectionState {

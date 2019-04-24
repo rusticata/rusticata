@@ -1,6 +1,12 @@
 use radius_parser::parse_radius_data;
 
-use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
+use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+
+pub struct RadiusBuilder {}
+impl RBuilder for RadiusBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(RadiusParser::new(b"Radius")) }
+    fn probe(&self, i:&[u8]) -> bool { radius_probe(i) }
+}
 
 pub struct RadiusParser<'a> {
     _name: Option<&'a[u8]>,

@@ -1,7 +1,13 @@
 use openvpn_parser::{parse_openvpn_tcp,Payload,Opcode};
 use tls::TlsParser;
 
-use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
+use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+
+pub struct OpenVPNTCPBuilder {}
+impl RBuilder for OpenVPNTCPBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(OpenVPNTCPParser::new(b"OpenVPN/TCP")) }
+    fn probe(&self, i:&[u8]) -> bool { openvpn_tcp_probe(i) }
+}
 
 pub struct OpenVPNTCPParser<'a> {
     _name: Option<&'a[u8]>,

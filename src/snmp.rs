@@ -1,16 +1,28 @@
 use snmp_parser::{parse_snmp_v1,parse_snmp_v2c};
 use der_parser::{DerObjectContent,parse_der_sequence};
 
-use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
+use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
 
-pub struct SnmpParser<'a> {
+pub struct SNMPv1Builder {}
+impl RBuilder for SNMPv1Builder {
+    fn new(&self) -> Box<RParser> { Box::new(SNMPParser::new(b"SNMPv1",1)) }
+    fn probe(&self, i:&[u8]) -> bool { snmpv1_probe(i) }
+}
+
+pub struct SNMPv2cBuilder {}
+impl RBuilder for SNMPv2cBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(SNMPParser::new(b"SNMPv2c",2)) }
+    fn probe(&self, i:&[u8]) -> bool { snmpv2c_probe(i) }
+}
+
+pub struct SNMPParser<'a> {
     _name: Option<&'a[u8]>,
     _version: u8,
 }
 
-impl<'a> SnmpParser<'a> {
-    pub fn new(name: &'a[u8], version: u8) -> SnmpParser<'a> {
-        SnmpParser{
+impl<'a> SNMPParser<'a> {
+    pub fn new(name: &'a[u8], version: u8) -> SNMPParser<'a> {
+        SNMPParser{
             _name: Some(name),
             _version: version,
         }
@@ -18,20 +30,20 @@ impl<'a> SnmpParser<'a> {
 }
 
 
-impl<'a> RParser for SnmpParser<'a> {
+impl<'a> RParser for SNMPParser<'a> {
     fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
         let parser = match self._version {
-            0 => parse_snmp_v1,
-            1 => parse_snmp_v2c,
+            1 => parse_snmp_v1,
+            2 => parse_snmp_v2c,
             _ => return R_STATUS_FAIL,
         };
         match parser(i) {
             Ok((_rem,r)) => {
-                debug!("parse_snmp_v1: {:?}", r);
+                debug!("parse_snmp({}): {:?}", self._version, r);
                 R_STATUS_OK
             },
             e => {
-                warn!("parse_snmp_v1 failed: {:?}", e);
+                warn!("parse_snmp({}) failed: {:?}", self._version, e);
                 R_STATUS_FAIL
             },
         }
@@ -72,3 +84,12 @@ pub fn snmp_probe(i: &[u8]) -> bool {
     }
 }
 
+pub fn snmpv1_probe(i: &[u8]) -> bool {
+    if i.len() <= 20 { return false; }
+    parse_pdu_enveloppe_version(i) == Some(1)
+}
+
+pub fn snmpv2c_probe(i: &[u8]) -> bool {
+    if i.len() <= 20 { return false; }
+    parse_pdu_enveloppe_version(i) == Some(2)
+}

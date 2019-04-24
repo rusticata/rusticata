@@ -25,6 +25,13 @@ pub trait RParser : Send + Sync {
     fn parse(&mut self, &[u8], u8) -> u32;
 }
 
+/// Interface of a parser builder
+pub trait RBuilder : Send + Sync {
+    fn new(&self) -> Box<RParser>;
+
+    fn probe(&self, &[u8]) -> bool;
+}
+
 // status: return code, events
 
 pub static R_STATUS_EVENTS : u32  = 0x0100;

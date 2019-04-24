@@ -4,6 +4,12 @@ use der_parser::der_read_element_header;
 use kerberos_parser::krb5_parser;
 use kerberos_parser::krb5::{EncryptionType,PAType};
 
+pub struct KerberosUDPBuilder {}
+impl RBuilder for KerberosUDPBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(KerberosParserUDP::new(b"Kerberos/UDP")) }
+    fn probe(&self, i:&[u8]) -> bool { kerberos_probe_udp(i) }
+}
+
 pub struct KerberosParserUDP<'a> {
     _name: Option<&'a[u8]>,
     req_id: u8,

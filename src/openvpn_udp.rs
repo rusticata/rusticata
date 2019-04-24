@@ -1,7 +1,13 @@
 use openvpn_parser::*;
 use tls::TlsParser;
 
-use rparser::{RParser,R_STATUS_OK,R_STATUS_FAIL};
+use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+
+pub struct OpenVPNUDPBuilder {}
+impl RBuilder for OpenVPNUDPBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(OpenVPNUDPParser::new(b"OpenVPN/UDP")) }
+    fn probe(&self, i:&[u8]) -> bool { openvpn_udp_probe(i) }
+}
 
 pub struct OpenVPNUDPParser<'a> {
     _name: Option<&'a[u8]>,

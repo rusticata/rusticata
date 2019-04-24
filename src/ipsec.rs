@@ -8,6 +8,12 @@ use rparser::*;
 
 use ipsec_parser::*;
 
+pub struct IPsecBuilder {}
+impl RBuilder for IPsecBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(IPsecParser::new(b"IKEv2")) }
+    fn probe(&self, i:&[u8]) -> bool { ipsec_probe(i) }
+}
+
 pub struct IPsecParser<'a> {
     _name: Option<&'a[u8]>,
 

@@ -4,6 +4,12 @@ use nom::be_u32;
 
 use kerberos_udp::{KerberosParserUDP,kerberos_probe_udp};
 
+pub struct KerberosTCPBuilder {}
+impl RBuilder for KerberosTCPBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(KerberosParserTCP::new(b"Kerberos/TCP")) }
+    fn probe(&self, i:&[u8]) -> bool { kerberos_probe_tcp(i) }
+}
+
 pub struct KerberosParserTCP<'a> {
     _name:  Option<&'a[u8]>,
     parser: KerberosParserUDP<'a>,

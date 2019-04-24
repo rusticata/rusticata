@@ -37,9 +37,9 @@ pub use rparser::*;
 pub mod rparser;
 
 mod kerberos_tcp;
-pub use kerberos_tcp::{KerberosParserTCP,kerberos_probe_tcp};
+pub use kerberos_tcp::{KerberosTCPBuilder,KerberosParserTCP,kerberos_probe_tcp};
 mod kerberos_udp;
-pub use kerberos_udp::{KerberosParserUDP,kerberos_probe_udp};
+pub use kerberos_udp::{KerberosUDPBuilder,KerberosParserUDP,kerberos_probe_udp};
 
 mod ipsec;
 pub use ipsec::*;
@@ -48,20 +48,20 @@ pub use ntp::*;
 pub mod ntp;
 
 mod openvpn;
-pub use openvpn::{OpenVPNTCPParser,openvpn_tcp_probe};
+pub use openvpn::{OpenVPNTCPBuilder,OpenVPNTCPParser,openvpn_tcp_probe};
 mod openvpn_udp;
-pub use openvpn_udp::{OpenVPNUDPParser,openvpn_udp_probe};
+pub use openvpn_udp::{OpenVPNUDPBuilder,OpenVPNUDPParser,openvpn_udp_probe};
 
 mod radius;
-pub use radius::RadiusParser;
+pub use radius::{RadiusBuilder,RadiusParser};
 
 mod snmp;
-pub use snmp::{SnmpParser,snmp_probe};
+pub use snmp::{SNMPv1Builder,SNMPv2cBuilder,SNMPParser,snmp_probe,snmpv1_probe,snmpv2c_probe};
 mod snmpv3;
-pub use snmpv3::{SnmpV3Parser,snmpv3_probe};
+pub use snmpv3::{SNMPv3Builder,SNMPv3Parser,snmpv3_probe};
 
 mod ssh;
-pub use ssh::{SSHParser,ssh_probe};
+pub use ssh::{SSHBuilder,SSHParser,ssh_probe};
 
 pub use tls::*;
 pub mod tls;

@@ -26,6 +26,6 @@ ntp-parser = "0.3"
 openvpn-parser = "0.3"
 radius-parser = "0.2"
 snmp-parser = "0.3"
-ssh-parser = { git="https://github.com/rusticata/ssh-parser.git", version="0.2" }
-tls-parser = "0.7"
+ssh-parser = "0.2"
+tls-parser = "0.7.1"
 x509-parser = "0.4"

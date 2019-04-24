@@ -33,6 +33,12 @@ use tls_parser::tls_extensions::*;
 use tls_parser::tls_sign_hash::*;
 use tls_parser::tls_states::{TlsState,tls_state_transition};
 
+pub struct TLSBuilder {}
+impl RBuilder for TLSBuilder {
+    fn new(&self) -> Box<RParser> { Box::new(TlsParser::new(b"TLS")) }
+    fn probe(&self, i:&[u8]) -> bool { tls_probe(i) }
+}
+
 /// TLS parser events
 #[repr(u32)]
 pub enum TlsParserEvents {
@@ -132,7 +138,7 @@ impl<'a> TlsParser<'a> {
             TlsMessage::Handshake(ref m) => {
                 match *m {
                     TlsMessageHandshake::ClientHello(ref content) => {
-                        debug!("TLS ClientHello version=0x{:x}", content.version);
+                        debug!("TLS ClientHello version=0x{:x} ({:?})", content.version, content.version);
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         match &ext {
                             Ok((rem ,ref l)) => {
@@ -170,7 +176,7 @@ impl<'a> TlsParser<'a> {
                         debug!("ext {:?}", ext);
                     },
                     TlsMessageHandshake::ServerHello(ref content) => {
-                        debug!("TLS ServerHello version=0x{:x}", content.version);
+                        debug!("TLS ServerHello version=0x{:x} ({:?})", content.version, content.version);
                         self.compression = Some(content.compression);
                         self.cipher = content.cipher.get_ciphersuite();
                         match self.cipher {
@@ -239,6 +245,9 @@ impl<'a> TlsParser<'a> {
                     _ => (),
                 }
             },
+            TlsMessage::Alert(ref a) => {
+                warn!("TLS alert: severity: {} code: {}", a.severity, a.code);
+            },
             TlsMessage::Heartbeat(ref d) => {
                 if d.payload_len as usize > d.payload.len() {
                     warn!("Heartbeat message with incorrect length {}. Heartbleed attempt ?",d.payload.len());
@@ -265,6 +274,7 @@ impl<'a> TlsParser<'a> {
         match r.hdr.record_type {
             TlsRecordType::ChangeCipherSpec => (),
             TlsRecordType::Handshake        => (),
+            TlsRecordType::Alert            => (),
             _ => return status,
         }
 
@@ -512,9 +522,12 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
         TlsCipherKx::Ecdh    => {
             // Signed ECDH params
             match parse_content_and_signature(parameters,parse_ecdh_params,extended) {
-                Ok((_,ref parsed)) => {
+                Ok((rem,ref parsed)) => {
                     debug!("ECDHE Parameters: {:?}",parsed);
                     info!("Temp key: using cipher {:?}",parsed.0.curve_params);
+                    if rem.len() > 0 {
+                        warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
+                    }
                     match &parsed.0.curve_params.params_content {
                         &ECParametersContent::NamedGroup(group) => {
                             let key_bits = group.key_bits().unwrap_or(0);
@@ -531,7 +544,10 @@ fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extende
         TlsCipherKx::Dhe => {
             // Signed DH params
             match parse_content_and_signature(parameters,parse_dh_params,extended) {
-                Ok((_,ref parsed)) => {
+                Ok((rem,ref parsed)) => {
+                    if rem.len() > 0 {
+                        warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
+                    }
                     debug!("DHE Parameters: {:?}",parsed);
                     info!("Temp key: using DHE size_p={:?} bits",parsed.0.dh_p.len() * 8);
                     return Some((parsed.0.dh_p.len() * 8) as u32);
