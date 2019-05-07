@@ -34,13 +34,13 @@ pub trait RBuilder : Send + Sync {
 
 // status: return code, events
 
-pub static R_STATUS_EVENTS : u32  = 0x0100;
+pub const R_STATUS_EVENTS : u32  = 0x0100;
 
-pub static R_STATUS_OK : u32      = 0x0000;
-pub static R_STATUS_FAIL : u32    = 0x0001;
+pub const R_STATUS_OK : u32      = 0x0000;
+pub const R_STATUS_FAIL : u32    = 0x0001;
 
-pub static R_STATUS_EV_MASK : u32 = 0x0f00;
-pub static R_STATUS_MASK : u32    = 0x00ff;
+pub const R_STATUS_EV_MASK : u32 = 0x0f00;
+pub const R_STATUS_MASK : u32    = 0x00ff;
 
 #[macro_export]
 macro_rules! r_status_is_ok {
