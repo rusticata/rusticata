@@ -36,8 +36,10 @@ pub use rparser::*;
 #[macro_use]
 pub mod rparser;
 
-mod dns;
-pub use dns::{DnsUDPBuilder, DnsUDPParser, dns_probe_udp};
+mod dns_tcp;
+pub use dns_tcp::{DnsTCPBuilder, DnsTCPParser, dns_probe_tcp};
+mod dns_udp;
+pub use dns_udp::{DnsUDPBuilder, DnsUDPParser, dns_probe_udp};
 
 mod kerberos_tcp;
 pub use kerberos_tcp::{KerberosTCPBuilder,KerberosParserTCP,kerberos_probe_tcp};
