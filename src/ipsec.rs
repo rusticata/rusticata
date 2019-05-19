@@ -245,4 +245,3 @@ r_declare_state_free!(r_ipsec_state_free,IPsecParser,{ () });
 
 r_implement_probe!(r_ipsec_probe,ipsec_probe);
 r_implement_parse!(r_ipsec_parse,IPsecParser);
-

@@ -47,7 +47,9 @@ mod kerberos_udp;
 pub use kerberos_udp::{KerberosUDPBuilder,KerberosParserUDP,kerberos_probe_udp};
 
 mod ipsec;
+mod ipsec_natt;
 pub use ipsec::*;
+pub use ipsec_natt::*;
 
 pub use ntp::*;
 pub mod ntp;
