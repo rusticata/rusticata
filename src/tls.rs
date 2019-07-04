@@ -26,6 +26,7 @@ use rparser::*;
 use x509_parser::parse_x509_der;
 
 use tls_parser::tls::*;
+use tls_parser::tls_alert::{TlsAlertDescription, TlsAlertSeverity};
 use tls_parser::tls_ciphers::*;
 use tls_parser::tls_dh::*;
 use tls_parser::tls_ec::*;
@@ -76,6 +77,8 @@ pub struct TlsParser<'a> {
     pub cipher: Option<&'a TlsCipherSuite>,
     /// TLS state
     pub state: TlsState,
+    /// if a fatal alert was encountered, store it
+    pub fatal_alert: Option<TlsAlertDescription>,
 
     /// Exchanged key size
     ///
@@ -109,6 +112,7 @@ impl<'a> TlsParser<'a> {
             compression:None,
             cipher:None,
             state:TlsState::None,
+            fatal_alert: None,
             kx_bits: None,
             sni: Vec::new(),
             // capacity is the amount of space allocated, which means elements can be added
@@ -252,7 +256,10 @@ impl<'a> TlsParser<'a> {
                 }
             },
             TlsMessage::Alert(ref a) => {
-                warn!("TLS alert: severity: {} code: {}", a.severity, a.code);
+                info!("TLS alert: severity: {} code: {}", a.severity, a.code);
+                if a.severity == TlsAlertSeverity::Fatal {
+                    self.fatal_alert = Some(a.code);
+                }
             },
             TlsMessage::Heartbeat(ref d) => {
                 if d.payload_len as usize > d.payload.len() {
