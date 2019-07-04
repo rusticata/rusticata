@@ -124,7 +124,7 @@ impl<'a> TlsParser<'a> {
             return status;
         };
         // update state machine
-        match tls_state_transition(self.state, msg) {
+        match tls_state_transition(self.state, msg, direction == STREAM_TOSERVER) {
             Ok(s)  => self.state = s,
             Err(_) => {
                 self.state = TlsState::Invalid;
