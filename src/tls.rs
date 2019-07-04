@@ -63,6 +63,9 @@ pub struct TlsParser<'a> {
     /// by the client application after checking the parsing return value.
     pub events: Vec<u32>,
 
+    pub client_version: TlsVersion,
+    pub ssl_record_version: TlsVersion,
+
     /// Selected compression method
     ///
     /// Only valid after the ServerHello message
@@ -101,6 +104,8 @@ impl<'a> TlsParser<'a> {
         TlsParser{
             _o:Some(i),
             events:Vec::new(),
+            client_version: TlsVersion(0),
+            ssl_record_version: TlsVersion(0),
             compression:None,
             cipher:None,
             state:TlsState::None,
@@ -139,6 +144,7 @@ impl<'a> TlsParser<'a> {
                 match *m {
                     TlsMessageHandshake::ClientHello(ref content) => {
                         debug!("TLS ClientHello version=0x{:x} ({:?})", content.version, content.version);
+                        self.client_version = content.version;
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         match &ext {
                             Ok((rem ,ref l)) => {
@@ -294,7 +300,7 @@ impl<'a> TlsParser<'a> {
             },
         };
         // do not parse if session is encrypted
-        if self.state == TlsState::ClientChangeCipherSpec {
+        if self.state == TlsState::ClientChangeCipherSpec || self.state == TlsState::Invalid {
             return status;
         };
         // XXX record may be compressed
@@ -302,6 +308,7 @@ impl<'a> TlsParser<'a> {
         // Parse record contents as plaintext
         match parse_tls_record_with_header(record_buffer,r.hdr.clone()) {
             Ok((rem2,ref msg_list)) => {
+                self.ssl_record_version = r.hdr.version;
                 for msg in msg_list {
                     status |= self.parse_message_level(msg, direction);
                 };
