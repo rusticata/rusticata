@@ -46,6 +46,9 @@ pub fn dns_probe_tcp(i: &[u8]) -> bool {
     }
     match be_u16(i) {
         Ok((rem, record_len)) => {
+            if record_len < i.len() as u16 {
+                return false;
+            }
             if record_len > rem.len() as u16 {
                 return false;
             }
