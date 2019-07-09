@@ -1,5 +1,5 @@
 use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
-use der_parser::{DerObjectContent,parse_der_sequence};
+use der_parser::ber::{BerObjectContent, parse_ber_sequence};
 use snmp_parser::{parse_snmp_v1,parse_snmp_v2c};
 
 pub struct SNMPv1Builder {}
@@ -51,10 +51,10 @@ impl<'a> RParser for SNMPParser<'a> {
 
 // Read PDU sequence and extract version, if similar to SNMP definition
 pub fn parse_pdu_enveloppe_version(i:&[u8]) -> Option<u32> {
-    match parse_der_sequence(i) {
+    match parse_ber_sequence(i) {
         Ok((_,x)) => {
             match x.content {
-                DerObjectContent::Sequence(ref v) => {
+                BerObjectContent::Sequence(ref v) => {
                     if v.len() == 3 {
                         match v[0].as_u32()  {
                             Ok(0) => Some(1), // possibly SNMPv1

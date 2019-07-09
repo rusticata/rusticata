@@ -1,5 +1,5 @@
 use crate::rparser::*;
-use der_parser::der_read_element_header;
+use der_parser::der::der_read_element_header;
 use kerberos_parser::krb5_parser;
 use kerberos_parser::krb5::{EncryptionType,PAType};
 
@@ -29,9 +29,9 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                 // Kerberos messages start with an APPLICATION header
                 if hdr.class != 0b01 { return 1; }
                 debug!("hdr: {:?}", hdr);
-                match hdr.tag {
+                match hdr.tag.0 {
                     10 => {
-                        self.req_id = hdr.tag;
+                        self.req_id = hdr.tag.0;
                         let res = krb5_parser::parse_as_req(i);
                         debug!("AS-REQ: {:?}", res);
                         if let Ok((_,kdc_req)) = res {
@@ -61,7 +61,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                         self.req_id = 0;
                     },
                     12 => {
-                        self.req_id = hdr.tag;
+                        self.req_id = hdr.tag.0;
                         let res = krb5_parser::parse_tgs_req(i);
                         debug!("TGS-REQ: {:?}", res);
                         if let Ok((_,kdc_req)) = res {
@@ -101,7 +101,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                         self.req_id = 0;
                     },
                     14 => {
-                        self.req_id = hdr.tag;
+                        self.req_id = hdr.tag.0;
                         let res = krb5_parser::parse_ap_req(i);
                         debug!("AP-REQ: {:?}", res);
                         if let Ok((_,ap_rep)) = res {
@@ -164,7 +164,7 @@ pub fn kerberos_probe_udp(i: &[u8]) -> bool {
             // Kerberos messages start with an APPLICATION header
             if hdr.class != 0b01 { return false; }
             // Tag number should be <= 30
-            if hdr.tag >= 30 { return false; }
+            if hdr.tag.0 >= 30 { return false; }
             // Kerberos messages contain sequences
             if rem.is_empty() || rem[0] != 0x30 { return false; }
             // Check kerberos version
