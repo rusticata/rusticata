@@ -1,6 +1,5 @@
+use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
 use radius_parser::parse_radius_data;
-
-use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
 
 pub struct RadiusBuilder {}
 impl RBuilder for RadiusBuilder {

@@ -1,6 +1,6 @@
 use crate::{dns_probe_udp, DnsUDPParser};
+use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL};
 use nom::be_u16;
-use rparser::{RBuilder, RParser, R_STATUS_FAIL};
 
 pub struct DnsTCPBuilder {}
 impl RBuilder for DnsTCPBuilder {

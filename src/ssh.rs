@@ -1,7 +1,6 @@
+use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL,STREAM_TOSERVER};
 use nom::{Err,HexDisplay};
 use ssh_parser::{ssh,SshPacket};
-
-use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL,STREAM_TOSERVER};
 
 pub struct SSHBuilder {}
 impl RBuilder for SSHBuilder {

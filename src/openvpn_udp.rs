@@ -1,7 +1,6 @@
+use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+use crate::tls::TlsParser;
 use openvpn_parser::*;
-use tls::TlsParser;
-
-use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
 
 pub struct OpenVPNUDPBuilder {}
 impl RBuilder for OpenVPNUDPBuilder {

@@ -4,7 +4,7 @@ use std;
 use std::mem;
 use libc::c_char;
 
-use rparser::*;
+use crate::rparser::*;
 
 use ntp_parser::*;
 

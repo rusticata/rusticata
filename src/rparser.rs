@@ -22,14 +22,14 @@ pub trait RParser : Send + Sync {
     ///
     /// `R_STATUS_OK` or `R_STATUS_FAIL`, possibly or'ed with
     /// `R_STATUS_EVENTS` if parsing events were raised.
-    fn parse(&mut self, &[u8], u8) -> u32;
+    fn parse(&mut self, data:&[u8], direction:u8) -> u32;
 }
 
 /// Interface of a parser builder
 pub trait RBuilder : Send + Sync {
     fn new(&self) -> Box<RParser>;
 
-    fn probe(&self, &[u8]) -> bool;
+    fn probe(&self, data:&[u8]) -> bool;
 }
 
 // status: return code, events

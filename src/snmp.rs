@@ -1,7 +1,6 @@
-use snmp_parser::{parse_snmp_v1,parse_snmp_v2c};
+use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
 use der_parser::{DerObjectContent,parse_der_sequence};
-
-use rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+use snmp_parser::{parse_snmp_v1,parse_snmp_v2c};
 
 pub struct SNMPv1Builder {}
 impl RBuilder for SNMPv1Builder {

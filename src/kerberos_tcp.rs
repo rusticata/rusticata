@@ -1,8 +1,6 @@
-use rparser::*;
-
+use crate::rparser::*;
+use crate::kerberos_udp::{KerberosParserUDP,kerberos_probe_udp};
 use nom::be_u32;
-
-use kerberos_udp::{KerberosParserUDP,kerberos_probe_udp};
 
 pub struct KerberosTCPBuilder {}
 impl RBuilder for KerberosTCPBuilder {

@@ -22,7 +22,7 @@ use itertools::Itertools;
 
 use md5;
 
-use rparser::*;
+use crate::rparser::*;
 use x509_parser::parse_x509_der;
 
 use tls_parser::tls::*;

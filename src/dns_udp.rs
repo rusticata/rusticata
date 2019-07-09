@@ -1,5 +1,5 @@
+use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL, R_STATUS_OK};
 use dns_parser::Packet;
-use rparser::{RBuilder, RParser, R_STATUS_FAIL, R_STATUS_OK};
 
 pub struct DnsUDPBuilder {}
 impl RBuilder for DnsUDPBuilder {
