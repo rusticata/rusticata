@@ -11,7 +11,7 @@ impl RBuilder for KerberosUDPBuilder {
 
 pub struct KerberosParserUDP<'a> {
     _name: Option<&'a[u8]>,
-    req_id: u8,
+    req_id: u32,
 }
 
 pub fn to_hex_string(bytes: &[u8]) -> String {
