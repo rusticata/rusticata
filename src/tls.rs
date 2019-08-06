@@ -313,7 +313,7 @@ impl<'a> TlsParser<'a> {
         // XXX record may be compressed
         //
         // Parse record contents as plaintext
-        match parse_tls_record_with_header(record_buffer,r.hdr.clone()) {
+        match parse_tls_record_with_header(record_buffer,&r.hdr) {
             Ok((rem2,ref msg_list)) => {
                 self.ssl_record_version = r.hdr.version;
                 for msg in msg_list {
