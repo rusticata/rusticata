@@ -36,7 +36,7 @@ use tls_parser::tls_states::{TlsState,tls_state_transition};
 
 pub struct TLSBuilder {}
 impl RBuilder for TLSBuilder {
-    fn new(&self) -> Box<RParser> { Box::new(TlsParser::new(b"TLS")) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(TlsParser::new(b"TLS")) }
     fn probe(&self, i:&[u8]) -> bool { tls_probe(i) }
 }
 
@@ -407,7 +407,7 @@ pub fn tls_probe(i: &[u8]) -> bool {
     // second is TLS version major (0x3)
     // third is TLS version minor (0x0 for SSLv3, 0x1 for TLSv1.0, etc.)
     match (i[0],i[1],i[2]) {
-        (0x14...0x17,0x03,0...3) => true,
+        (0x14..=0x17,0x03,0..=3) => true,
         _ => false,
     }
 }

@@ -3,7 +3,7 @@ use dns_parser::Packet;
 
 pub struct DnsUDPBuilder {}
 impl RBuilder for DnsUDPBuilder {
-    fn new(&self) -> Box<RParser> { Box::new(DnsUDPParser::new(b"DNS/UDP")) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(DnsUDPParser::new(b"DNS/UDP")) }
     fn probe(&self, i:&[u8]) -> bool { dns_probe_udp(i) }
 }
 

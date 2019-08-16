@@ -10,7 +10,7 @@ use ntp_parser::*;
 
 pub struct NTPBuilder {}
 impl RBuilder for NTPBuilder {
-    fn new(&self) -> Box<RParser> { Box::new(NtpParser::new(b"NTP")) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(NtpParser::new(b"NTP")) }
     fn probe(&self, i:&[u8]) -> bool { ntp_probe(i) }
 }
 

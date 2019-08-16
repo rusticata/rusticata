@@ -4,7 +4,7 @@ use ssh_parser::{ssh,SshPacket};
 
 pub struct SSHBuilder {}
 impl RBuilder for SSHBuilder {
-    fn new(&self) -> Box<RParser> { Box::new(SSHParser::new(b"SSH")) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(SSHParser::new(b"SSH")) }
     fn probe(&self, i:&[u8]) -> bool { ssh_probe(i) }
 }
 

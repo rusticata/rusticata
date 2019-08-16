@@ -95,10 +95,10 @@ pub extern "C" fn rusticata_init(config: &'static mut SuricataConfig) -> i32 {
     assert_eq!(config.magic,SURICATA_RUST_MAGIC);
 
     let log_level = match config.log_level {
-        0...4  => LevelFilter::Error,
+        0..=4  => LevelFilter::Error,
         5      => LevelFilter::Warn,
-        6...7  => LevelFilter::Info,
-        8...11 => LevelFilter::Debug,
+        6..=7  => LevelFilter::Info,
+        8..=11 => LevelFilter::Debug,
         _      => LevelFilter::Off,
     };
 

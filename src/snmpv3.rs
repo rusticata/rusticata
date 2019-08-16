@@ -4,7 +4,7 @@ use snmp_parser::parse_snmp_v3;
 
 pub struct SNMPv3Builder {}
 impl RBuilder for SNMPv3Builder {
-    fn new(&self) -> Box<RParser> { Box::new(SNMPv3Parser::new(b"SNMPv3")) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(SNMPv3Parser::new(b"SNMPv3")) }
     fn probe(&self, i:&[u8]) -> bool { snmpv3_probe(i) }
 }
 

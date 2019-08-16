@@ -5,7 +5,7 @@ use nom::number::streaming::be_u16;
 
 pub struct DnsTCPBuilder {}
 impl RBuilder for DnsTCPBuilder {
-    fn new(&self) -> Box<RParser> {
+    fn new(&self) -> Box<dyn RParser> {
         Box::new(DnsTCPParser::new(b"DNS/TCP"))
     }
     fn probe(&self, i: &[u8]) -> bool {

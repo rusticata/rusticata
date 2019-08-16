@@ -4,7 +4,7 @@ use openvpn_parser::{parse_openvpn_tcp,Payload,Opcode};
 
 pub struct OpenVPNTCPBuilder {}
 impl RBuilder for OpenVPNTCPBuilder {
-    fn new(&self) -> Box<RParser> { Box::new(OpenVPNTCPParser::new(b"OpenVPN/TCP")) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(OpenVPNTCPParser::new(b"OpenVPN/TCP")) }
     fn probe(&self, i:&[u8]) -> bool { openvpn_tcp_probe(i) }
 }
 

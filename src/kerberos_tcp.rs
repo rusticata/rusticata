@@ -5,7 +5,7 @@ use nom::number::streaming::be_u32;
 
 pub struct KerberosTCPBuilder {}
 impl RBuilder for KerberosTCPBuilder {
-    fn new(&self) -> Box<RParser> { Box::new(KerberosParserTCP::new(b"Kerberos/TCP")) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(KerberosParserTCP::new(b"Kerberos/TCP")) }
     fn probe(&self, i:&[u8]) -> bool { kerberos_probe_tcp(i) }
 }
 

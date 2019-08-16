@@ -4,13 +4,13 @@ use snmp_parser::{parse_snmp_v1,parse_snmp_v2c};
 
 pub struct SNMPv1Builder {}
 impl RBuilder for SNMPv1Builder {
-    fn new(&self) -> Box<RParser> { Box::new(SNMPParser::new(b"SNMPv1",1)) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(SNMPParser::new(b"SNMPv1",1)) }
     fn probe(&self, i:&[u8]) -> bool { snmpv1_probe(i) }
 }
 
 pub struct SNMPv2cBuilder {}
 impl RBuilder for SNMPv2cBuilder {
-    fn new(&self) -> Box<RParser> { Box::new(SNMPParser::new(b"SNMPv2c",2)) }
+    fn new(&self) -> Box<dyn RParser> { Box::new(SNMPParser::new(b"SNMPv2c",2)) }
     fn probe(&self, i:&[u8]) -> bool { snmpv2c_probe(i) }
 }
 

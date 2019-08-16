@@ -27,7 +27,7 @@ pub trait RParser : Send + Sync {
 
 /// Interface of a parser builder
 pub trait RBuilder : Send + Sync {
-    fn new(&self) -> Box<RParser>;
+    fn new(&self) -> Box<dyn RParser>;
 
     fn probe(&self, data:&[u8]) -> bool;
 }
