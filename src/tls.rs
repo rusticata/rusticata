@@ -158,7 +158,7 @@ impl<'a> TlsParser<'a> {
                                 let ja3 = build_ja3_fingerprint(content, l);
                                 let digest = md5::compute(&ja3);
                                 debug!("JA3: {} --> {:x}", ja3, digest);
-                                self.ja3 = Some(ja3);
+                                self.ja3 = Some(format!("{:?}", digest));
                                 for extension in l {
                                     match *extension {
                                         TlsExtension::SignatureAlgorithms(_) => self.has_signature_algorithms = true,
