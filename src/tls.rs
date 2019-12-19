@@ -126,7 +126,7 @@ impl<'a> TlsParser<'a> {
 
     /// Message-level TLS parsing
     pub fn parse_message_level(&mut self, msg: &TlsMessage, direction:u8) -> u32 {
-        debug!("parse_message_level {:?}",msg);
+        trace!("parse_message_level {:?}",msg);
         let mut status = R_STATUS_OK;
         if self.state == TlsState::ClientChangeCipherSpec {
             // Ignore records from now on, they are encrypted
@@ -141,7 +141,7 @@ impl<'a> TlsParser<'a> {
                 status |= R_STATUS_EVENTS;
             },
         };
-        debug!("TLS new state: {:?}",self.state);
+        trace!("TLS new state: {:?}",self.state);
         // extract variables
         match *msg {
             TlsMessage::Handshake(ref m) => {
@@ -279,9 +279,9 @@ impl<'a> TlsParser<'a> {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
 
-        debug!("parse_record_level {}",r.data.len());
-        // debug!("{:?}",r.hdr);
-        // debug!("{:?}",r.data);
+        trace!("parse_record_level {}",r.data.len());
+        // trace!("{:?}",r.hdr);
+        // trace!("{:?}",r.data);
 
         // only parse some message types
         match r.hdr.record_type {
@@ -326,8 +326,8 @@ impl<'a> TlsParser<'a> {
                 };
             }
             Err(Err::Incomplete(needed)) => {
-                debug!("Defragmentation required (TLS record)");
-                debug!("Missing {:?} bytes",needed);
+                trace!("Defragmentation required (TLS record)");
+                trace!("Missing {:?} bytes",needed);
                 // Record is fragmented
                 self.buffer.extend_from_slice(r.data);
             },
@@ -341,9 +341,9 @@ impl<'a> TlsParser<'a> {
     pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8], direction:u8) -> u32 {
         let mut v : Vec<u8>;
         let mut status = R_STATUS_OK;
-        debug!("parse_tcp_level ({})",i.len());
-        debug!("defrag buffer size: {}",self.tcp_buffer.len());
-        // debug!("{:?}",i);
+        trace!("parse_tcp_level ({})",i.len());
+        trace!("defrag buffer size: {}",self.tcp_buffer.len());
+        // trace!("{:?}",i);
         // do not parse if session is encrypted
         if self.state == TlsState::ClientChangeCipherSpec {
             return status;
@@ -363,18 +363,18 @@ impl<'a> TlsParser<'a> {
                 v.as_slice()
             },
         };
-        // debug!("tcp_buffer ({})",tcp_buffer.len());
+        // trace!("tcp_buffer ({})",tcp_buffer.len());
         let mut cur_i = tcp_buffer;
         while cur_i.len() > 0 {
             match parse_tls_raw_record(cur_i) {
                 Ok((rem, ref r)) => {
-                    // debug!("rem: {:?}",rem);
+                    // trace!("rem: {:?}",rem);
                     cur_i = rem;
                     status |= self.parse_record_level(r, direction);
                 },
                 Err(Err::Incomplete(needed)) => {
-                    debug!("Fragmentation required (TCP level)");
-                    debug!("Missing {:?} bytes",needed);
+                    trace!("Fragmentation required (TCP level)");
+                    trace!("Missing {:?} bytes",needed);
                     self.tcp_buffer.extend_from_slice(cur_i);
                     break;
                 },
@@ -390,7 +390,7 @@ r_declare_state_free!(r_tls_state_free,TlsParser,{ () });
 
 impl<'a> RParser for TlsParser<'a> {
     fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
-        debug!("[TLS->parse: direction={}, len={}]",direction,i.len());
+        trace!("[TLS->parse: direction={}, len={}]",direction,i.len());
 
         if i.len() == 0 {
             // Connection closed ?
