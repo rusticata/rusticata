@@ -12,8 +12,8 @@
 
 extern crate libc;
 
-use std;
 use std::mem;
+use std::convert::From;
 use libc::c_char;
 
 use nom::*;
@@ -23,6 +23,7 @@ use itertools::Itertools;
 use md5;
 
 use crate::rparser::*;
+use crate::Variant;
 use x509_parser::parse_x509_der;
 
 use tls_parser::tls::*;
@@ -38,6 +39,24 @@ pub struct TLSBuilder {}
 impl RBuilder for TLSBuilder {
     fn new(&self) -> Box<dyn RParser> { Box::new(TlsParser::new(b"TLS")) }
     fn probe(&self, i:&[u8]) -> bool { tls_probe(i) }
+}
+
+impl<'a> From<TlsVersion> for Variant<'a> {
+    fn from(input: TlsVersion) -> Self {
+        Variant::U16(input.0)
+    }
+}
+
+impl<'a> From<TlsCompressionID> for Variant<'a> {
+    fn from(input: TlsCompressionID) -> Self {
+        Variant::U8(input.0)
+    }
+}
+
+impl<'a> From<&TlsCipherSuite> for Variant<'a> {
+    fn from(input: &TlsCipherSuite) -> Self {
+        Variant::U16(input.id)
+    }
 }
 
 /// TLS parser events
@@ -399,6 +418,19 @@ impl<'a> RParser for TlsParser<'a> {
 
         self.parse_tcp_level(i, direction)
     }
+
+    fn get(&self, key: &str) -> Option<Variant> {
+        match key {
+            "client_version" => Some(self.client_version.into()),
+            "ssl_record_version" => Some(self.ssl_record_version.into()),
+            "ja3" => self.ja3.as_ref().map(|input| input.into()),
+            "compression" => self.compression.as_ref().map(|&input| input.into()),
+            "cipher" => self.cipher.as_ref().map(|&input| input.into()),
+            "kx_bits" => self.kx_bits.map(|input| input.into()),
+            "sni" => Some(Variant::from_slice(&self.sni)),
+            _ => None
+        }
+    }
 }
 
 pub fn tls_probe(i: &[u8]) -> bool {
@@ -661,4 +693,27 @@ fn is_tls13(_content: &TlsServerHelloContents, extensions: &Vec<TlsExtension>) -
             }
         })
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static CH: &'static [u8] = include_bytes!("../assets/client-hello.bin");
+
+    #[test]
+    fn tls_get() {
+        let mut parser = TlsParser::new(b"foo");
+        parser.parse(CH, 0);
+        assert_eq!(parser.get("client_version"), Some(Variant::U16(0x0301)));
+        assert_eq!(parser.get("ssl_record_version"), Some(Variant::U16(0x0301)));
+        assert_eq!(parser.get("ja3"), Some(Variant::Str("e2121ae1544cd5acae048d03505068a6")));
+        assert_eq!(parser.get("invalid key"), None);
+        parser.sni.push("foo.com".into());
+        if let Some(Variant::List(v)) = parser.get("sni") {
+            assert_eq!(v.len(), 1);
+        } else {
+            panic!("wrong variant type for SNI");
+        }
+    }
 }
