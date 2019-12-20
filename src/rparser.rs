@@ -1,5 +1,7 @@
 //! common functions for all parsers
 
+use crate::Variant;
+
 /// Interface of all Rusticata parsers.
 ///
 /// A object implementing the RParser trait is an instance of a parser,
@@ -23,6 +25,8 @@ pub trait RParser : Send + Sync {
     /// `R_STATUS_OK` or `R_STATUS_FAIL`, possibly or'ed with
     /// `R_STATUS_EVENTS` if parsing events were raised.
     fn parse(&mut self, data:&[u8], direction:u8) -> u32;
+
+    fn get(&self, _key: &str) -> Option<Variant> { None }
 }
 
 /// Interface of a parser builder

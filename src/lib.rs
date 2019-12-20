@@ -36,6 +36,9 @@ pub use rparser::*;
 #[macro_use]
 pub mod rparser;
 
+mod variant;
+pub use variant::*;
+
 mod dns_tcp;
 pub use dns_tcp::{DnsTCPBuilder, DnsTCPParser, dns_probe_tcp};
 mod dns_udp;
