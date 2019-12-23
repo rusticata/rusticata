@@ -26,7 +26,11 @@ pub trait RParser : Send + Sync {
     /// `R_STATUS_EVENTS` if parsing events were raised.
     fn parse(&mut self, data:&[u8], direction:u8) -> u32;
 
+    /// Request data from key
     fn get(&self, _key: &str) -> Option<Variant> { None }
+
+    /// Returns the available keys for the `get` function
+    fn keys(&self) -> ::std::slice::Iter<&str> { [].iter() }
 }
 
 /// Interface of a parser builder
