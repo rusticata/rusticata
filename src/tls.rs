@@ -23,7 +23,7 @@ use itertools::Itertools;
 use md5;
 
 use crate::rparser::*;
-use crate::Variant;
+use crate::{gen_get_variants, Variant};
 use x509_parser::parse_x509_der;
 
 use tls_parser::tls::*;
@@ -419,17 +419,14 @@ impl<'a> RParser for TlsParser<'a> {
         self.parse_tcp_level(i, direction)
     }
 
-    fn get(&self, key: &str) -> Option<Variant> {
-        match key {
-            "client_version" => Some(self.client_version.into()),
-            "ssl_record_version" => Some(self.ssl_record_version.into()),
-            "ja3" => self.ja3.as_ref().map(|input| input.into()),
-            "compression" => self.compression.as_ref().map(|&input| input.into()),
-            "cipher" => self.cipher.as_ref().map(|&input| input.into()),
-            "kx_bits" => self.kx_bits.map(|input| input.into()),
-            "sni" => Some(Variant::from_slice(&self.sni)),
-            _ => None
-        }
+    gen_get_variants!{TlsParser,
+        client_version     => into,
+        ssl_record_version => into,
+        ja3                => map_as_ref,
+        compression        => map,
+        cipher             => map,
+        kx_bits            => map,
+        "sni"              => |s| Some(Variant::from_slice(&s.sni)),
     }
 }
 
@@ -705,6 +702,10 @@ mod tests {
     fn tls_get() {
         let mut parser = TlsParser::new(b"foo");
         parser.parse(CH, 0);
+        let _ = parser.get("sni");
+        for key in parser.keys() {
+            println!(" [{}] => {:?}", key, parser.get(key));
+        }
         assert_eq!(parser.get("client_version"), Some(Variant::U16(0x0301)));
         assert_eq!(parser.get("ssl_record_version"), Some(Variant::U16(0x0301)));
         assert_eq!(parser.get("ja3"), Some(Variant::Str("e2121ae1544cd5acae048d03505068a6")));
@@ -714,6 +715,15 @@ mod tests {
             assert_eq!(v.len(), 1);
         } else {
             panic!("wrong variant type for SNI");
+        }
+    }
+
+    #[test]
+    fn tls_get_keys() {
+        let parser = TlsParser::new(b"foo");
+        println!("keys: {:?}", parser.keys().as_slice());
+        for k in parser.keys() {
+            println!("key: {}", k);
         }
     }
 }
