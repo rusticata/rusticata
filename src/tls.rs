@@ -426,7 +426,7 @@ impl<'a> RParser for TlsParser<'a> {
         compression        => map,
         cipher             => map,
         kx_bits            => map,
-        "sni"              => |s| Some(Variant::from_slice(&s.sni)),
+        sni                => |s| Some(Variant::from_slice(&s.sni)),
     }
 }
 

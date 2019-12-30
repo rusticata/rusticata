@@ -102,13 +102,13 @@ macro_rules! gen_get_variants {
     // MATCH ARMS
     //
     // Simple closure case
-    (@gen_match $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:pat => |$s:ident| $closure:expr, $($tail:tt)*) => {
+    (@gen_match $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => |$s:ident| $closure:expr, $($tail:tt)*) => {
         gen_get_variants!{
             @gen_match
             $t
             {
                 $($arms)*
-                $pattern => {
+                stringify!{$pattern} => {
                     let closure = |$s: &'b $t| $closure;
                     closure($self)
                 },
@@ -181,7 +181,7 @@ macro_rules! gen_get_variants {
         gen_get_variants!{
             @gen_keys
             [
-                $($arms)* $pattern,
+                $($arms)* stringify!{$pattern},
             ],
             $($tail)*
         }
