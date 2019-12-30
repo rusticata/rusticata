@@ -5,8 +5,15 @@ use std::mem;
 use libc::c_char;
 
 use crate::rparser::*;
+use crate::{gen_get_variants, Variant};
 
 use ipsec_parser::*;
+
+impl<'a> From<IkeTransformDHType> for Variant<'a> {
+    fn from(input: IkeTransformDHType) -> Self {
+        Variant::U16(input.0)
+    }
+}
 
 pub struct IPsecBuilder {}
 impl RBuilder for IPsecBuilder {
@@ -74,6 +81,32 @@ impl<'a> RParser for IPsecParser<'a> {
         };
         R_STATUS_OK
     }
+
+    gen_get_variants!{IPsecParser,
+        dh_group   => into,
+        enc        => |s| { s.get_server_proposal_enc().map(|x| x.into()) },
+        prf        => |s| { s.get_server_proposal_prf().map(|x| x.into()) },
+        auth       => |s| { s.get_server_proposal_auth().map(|x| x.into()) },
+        dh         => |s| { s.get_server_proposal_dh().map(|x| x.into()) },
+        esn        => |s| { s.get_server_proposal_esn().map(|x| x.into()) },
+    }
+}
+
+macro_rules! get_server_proposal {
+    ( $t:tt, $n:ident ) => {
+        pub fn $n(&self) -> Option<u16> {
+            if let Some(xform) = self.server_proposals.first() {
+                xform.iter()
+                    .find_map(|x| if let IkeV2Transform::$t(e) = x {
+                        Some(e.0)
+                    } else {
+                        None
+                    })
+            } else {
+                None
+            }
+        }
+    };
 }
 
 impl<'a> IPsecParser<'a> {
@@ -85,6 +118,12 @@ impl<'a> IPsecParser<'a> {
             dh_group: IkeTransformDHType::None,
         }
     }
+
+    get_server_proposal!{Encryption, get_server_proposal_enc}
+    get_server_proposal!{PRF, get_server_proposal_prf}
+    get_server_proposal!{Auth, get_server_proposal_auth}
+    get_server_proposal!{DH, get_server_proposal_dh}
+    get_server_proposal!{ESN, get_server_proposal_esn}
 
     fn add_proposals(&mut self, prop: &Vec<IkeV2Proposal>, direction: u8) {
         debug!("num_proposals: {}",prop.len());
@@ -214,6 +253,10 @@ impl<'a> IPsecParser<'a> {
             } else {
                 self.server_proposals.push(proposals);
             }
+        }
+        // The server must accept one proposal, or reject them all (RFC 5996 2.7)
+        if self.server_proposals.len() > 1 {
+            warn!("more than one server proposals")
         }
         debug!("client_proposals: {:?}", self.client_proposals);
         debug!("server_proposals: {:?}", self.server_proposals);
