@@ -4,6 +4,10 @@ pub enum Variant<'a> {
     Bool(bool),
     Bytes(&'a [u8]),
     Str(&'a str),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
     U8(u8),
     U16(u16),
     U32(u32),
@@ -44,6 +48,10 @@ macro_rules! variant_from_primitive {
 }
 
 variant_from_primitive!(bool, Variant::Bool);
+variant_from_primitive!(i8, Variant::I8);
+variant_from_primitive!(i16, Variant::I16);
+variant_from_primitive!(i32, Variant::I32);
+variant_from_primitive!(i64, Variant::I64);
 variant_from_primitive!(u8, Variant::U8);
 variant_from_primitive!(u16, Variant::U16);
 variant_from_primitive!(u32, Variant::U32);
