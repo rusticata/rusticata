@@ -1,5 +1,6 @@
 use crate::rparser::*;
 use crate::kerberos_udp::{KerberosParserUDP,kerberos_probe_udp};
+use crate::Variant;
 use nom::error::ErrorKind;
 use nom::number::streaming::be_u32;
 
@@ -64,6 +65,16 @@ impl<'a> RParser for KerberosParserTCP<'a> {
             }
         }
         status
+    }
+
+    /// Request data from key
+    fn get(&self, key: &str) -> Option<Variant> {
+        self.parser.get(key)
+    }
+
+    /// Returns the available keys for the `get` function
+    fn keys(&self) -> ::std::slice::Iter<&str> {
+        self.parser.keys()
     }
 }
 
