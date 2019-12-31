@@ -15,6 +15,8 @@ pub enum Variant<'a> {
     USize(usize),
 
     List(Box<Vec<Variant<'a>>>),
+
+    OwnedStr(String),
 }
 
 impl<'a> Variant<'a> {
@@ -219,7 +221,7 @@ mod tests {
 
     #[test]
     fn variant_size() {
-        // expected: 24: 8 (variant) + 16 (slice)
+        // expected: 32: 8 (variant) + 24 (String)
         println!("sizeof Variant: {}", mem::size_of::<Variant>());
     }
 }
