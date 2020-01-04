@@ -702,16 +702,16 @@ mod tests {
     fn tls_get() {
         let mut parser = TlsParser::new(b"foo");
         parser.parse(CH, 0);
-        let _ = parser.get("sni");
+        let _ = parser.get("tls.sni");
         for key in parser.keys() {
             println!(" [{}] => {:?}", key, parser.get(key));
         }
-        assert_eq!(parser.get("client_version"), Some(Variant::U16(0x0301)));
-        assert_eq!(parser.get("ssl_record_version"), Some(Variant::U16(0x0301)));
-        assert_eq!(parser.get("ja3"), Some(Variant::Str("e2121ae1544cd5acae048d03505068a6")));
+        assert_eq!(parser.get("tls.client_version"), Some(Variant::U16(0x0301)));
+        assert_eq!(parser.get("tls.ssl_record_version"), Some(Variant::U16(0x0301)));
+        assert_eq!(parser.get("tls.ja3"), Some(Variant::Str("e2121ae1544cd5acae048d03505068a6")));
         assert_eq!(parser.get("invalid key"), None);
         parser.sni.push("foo.com".into());
-        if let Some(Variant::List(v)) = parser.get("sni") {
+        if let Some(Variant::List(v)) = parser.get("tls.sni") {
             assert_eq!(v.len(), 1);
         } else {
             panic!("wrong variant type for SNI");

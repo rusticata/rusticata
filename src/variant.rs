@@ -82,7 +82,7 @@ macro_rules! gen_get_variants {
     // Entry point
     ($t:ident, $ns:tt, $($body:tt)* ) => {
         fn get<'b>(&'b self, key: &str) -> Option<Variant<'b>> {
-            gen_get_variants!{ @gen_match $t {}, self, key, $($body)* }
+            gen_get_variants!{ @gen_match $ns $t {}, self, key, $($body)* }
         }
         fn keys(&self) -> ::std::slice::Iter<&str> {
             gen_get_variants!{ @gen_keys $ns [], $($body)* }
@@ -92,13 +92,14 @@ macro_rules! gen_get_variants {
     // MATCH ARMS
     //
     // Simple closure case
-    (@gen_match $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => |$s:ident| $closure:expr, $($tail:tt)*) => {
+    (@gen_match $ns:tt $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => |$s:ident| $closure:expr, $($tail:tt)*) => {
         gen_get_variants!{
             @gen_match
+            $ns
             $t
             {
                 $($arms)*
-                stringify!{$pattern} => {
+                concat!($ns, stringify!{$pattern}) => {
                     let closure = |$s: &'b $t| $closure;
                     closure($self)
                 },
@@ -109,13 +110,14 @@ macro_rules! gen_get_variants {
         }
     };
     // Shortcut: into
-    (@gen_match $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => into, $($tail:tt)*) => {
+    (@gen_match $ns:tt $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => into, $($tail:tt)*) => {
         gen_get_variants!{
             @gen_match
+            $ns
             $t
             {
                 $($arms)*
-                stringify!{$pattern} => {
+                concat!($ns, stringify!{$pattern}) => {
                     Some($self.$pattern.into())
                 },
             },
@@ -125,13 +127,14 @@ macro_rules! gen_get_variants {
         }
     };
     // Shortcut: map
-    (@gen_match $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => map, $($tail:tt)*) => {
+    (@gen_match $ns:tt $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => map, $($tail:tt)*) => {
         gen_get_variants!{
             @gen_match
+            $ns
             $t
             {
                 $($arms)*
-                stringify!{$pattern} => {
+                concat!($ns, stringify!{$pattern}) => {
                     $self.$pattern.map(|p| p.into())
                 },
             },
@@ -141,13 +144,14 @@ macro_rules! gen_get_variants {
         }
     };
     // Shortcut: map_as_ref
-    (@gen_match $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => map_as_ref, $($tail:tt)*) => {
+    (@gen_match $ns:tt $t:ident {$($arms:tt)*}, $self:ident, $key:ident, $pattern:ident => map_as_ref, $($tail:tt)*) => {
         gen_get_variants!{
             @gen_match
+            $ns
             $t
             {
                 $($arms)*
-                stringify!{$pattern} => {
+                concat!($ns, stringify!{$pattern}) => {
                     $self.$pattern.as_ref().map(|p| p.into())
                 },
             },
@@ -157,7 +161,7 @@ macro_rules! gen_get_variants {
         }
     };
     // Termination rule
-    (@gen_match $t:ident {$($arms:tt)*}, $self:ident, $key:ident, /* $($body:tt)* */  $(,)* ) => {
+    (@gen_match $ns:tt $t:ident {$($arms:tt)*}, $self:ident, $key:ident, /* $($body:tt)* */  $(,)* ) => {
         match $key {
             $($arms)*
             _ => None
