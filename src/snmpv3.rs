@@ -1,6 +1,7 @@
 use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
 use crate::snmp::parse_pdu_enveloppe_version;
-use snmp_parser::parse_snmp_v3;
+use crate::{gen_get_variants, Variant};
+use snmp_parser::{parse_snmp_v3, SecurityModel};
 
 pub struct SNMPv3Builder {}
 impl RBuilder for SNMPv3Builder {
@@ -10,22 +11,36 @@ impl RBuilder for SNMPv3Builder {
 
 pub struct SNMPv3Parser<'a> {
     _name: Option<&'a[u8]>,
+    version: u8,
+    req_flags: u8,
+    security_model: SecurityModel,
+}
+
+impl<'a> From<SecurityModel> for Variant<'a> {
+    fn from(input: SecurityModel) -> Self {
+        input.0.into()
+    }
 }
 
 impl<'a> SNMPv3Parser<'a> {
     pub fn new(name: &'a[u8]) -> SNMPv3Parser<'a> {
         SNMPv3Parser{
             _name: Some(name),
+            version: 0,
+            req_flags: 0,
+            security_model: SecurityModel(0),
         }
     }
 }
-
 
 impl<'a> RParser for SNMPv3Parser<'a> {
     fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
         match parse_snmp_v3(i) {
             Ok((_rem,r)) => {
                 debug!("parse_snmp_v3: {:?}", r);
+                self.version = r.version as u8;
+                self.req_flags = r.header_data.msg_flags;
+                self.security_model = r.header_data.msg_security_model;
                 R_STATUS_OK
             },
             e => {
@@ -33,6 +48,12 @@ impl<'a> RParser for SNMPv3Parser<'a> {
                 R_STATUS_FAIL
             },
         }
+    }
+
+    gen_get_variants!{SNMPv3Parser,
+        version   => into,
+        encrypted => |s| { Some(Variant::Bool(s.req_flags & 0b010 != 0)) },
+        security_model => into,
     }
 }
 

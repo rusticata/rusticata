@@ -1,4 +1,5 @@
 use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL, R_STATUS_OK};
+use crate::{gen_get_variants, Variant};
 use dns_parser::Packet;
 
 pub struct DnsUDPBuilder {}
@@ -9,12 +10,18 @@ impl RBuilder for DnsUDPBuilder {
 
 pub struct DnsUDPParser<'a> {
     _name: Option<&'a[u8]>,
+
+    queries: Vec<String>,
+
+    answers: Vec<String>,
 }
 
 impl<'a> DnsUDPParser<'a> {
     pub fn new(name:&[u8]) -> DnsUDPParser {
         DnsUDPParser {
             _name: Some(name),
+            queries: Vec::new(),
+            answers: Vec::new(),
         }
     }
 }
@@ -27,11 +34,14 @@ impl<'a> RParser for DnsUDPParser<'a> {
                     debug!("DNS query");
                     for q in &pkt.questions {
                         debug!("  query: {}/{:?}", q.qname, q.qtype);
+                        self.queries.push(q.qname.to_string());
+                        // XXX query type is lost
                     }
                 } else {
                     debug!("DNS answer");
                     for answer in &pkt.answers {
                         debug!("  answer: {}/{:?}", answer.name, answer.data);
+                        self.answers.push(format!("{:?}", answer.data));
                     }
                 }
                 // debug!("pkt: {:?}", pkt);
@@ -39,6 +49,11 @@ impl<'a> RParser for DnsUDPParser<'a> {
             }
             _ => R_STATUS_FAIL
         }
+    }
+
+    gen_get_variants!{DnsUDPParser,
+        queries => |s| Some(Variant::from_slice(&s.queries)),
+        answers => |s| Some(Variant::from_slice(&s.answers)),
     }
 }
 

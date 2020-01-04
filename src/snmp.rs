@@ -1,6 +1,7 @@
-use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL, STREAM_TOSERVER};
+use crate::{gen_get_variants, Variant};
 use der_parser::ber::{BerObjectContent, parse_ber_sequence};
-use snmp_parser::{parse_snmp_v1,parse_snmp_v2c};
+use snmp_parser::{parse_snmp_v1,parse_snmp_v2c, PduType};
 
 pub struct SNMPv1Builder {}
 impl RBuilder for SNMPv1Builder {
@@ -16,36 +17,56 @@ impl RBuilder for SNMPv2cBuilder {
 
 pub struct SNMPParser<'a> {
     _name: Option<&'a[u8]>,
-    _version: u8,
+    version: u8,
+    community: Option<String>,
+    req_type: Option<PduType>,
+}
+
+impl<'a> From<PduType> for Variant<'a> {
+    fn from(input: PduType) -> Self {
+        input.0.into()
+    }
 }
 
 impl<'a> SNMPParser<'a> {
     pub fn new(name: &'a[u8], version: u8) -> SNMPParser<'a> {
         SNMPParser{
             _name: Some(name),
-            _version: version,
+            version: version,
+            community: None,
+            req_type: None,
         }
     }
 }
 
 
 impl<'a> RParser for SNMPParser<'a> {
-    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
-        let parser = match self._version {
+    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
+        let parser = match self.version {
             1 => parse_snmp_v1,
             2 => parse_snmp_v2c,
             _ => return R_STATUS_FAIL,
         };
         match parser(i) {
             Ok((_rem,r)) => {
-                debug!("parse_snmp({}): {:?}", self._version, r);
+                debug!("parse_snmp({}): {:?}", self.version, r);
+                self.community = Some(r.community);
+                if direction == STREAM_TOSERVER {
+                    self.req_type = Some(r.pdu.pdu_type());
+                }
                 R_STATUS_OK
             },
             e => {
-                warn!("parse_snmp({}) failed: {:?}", self._version, e);
+                warn!("parse_snmp({}) failed: {:?}", self.version, e);
                 R_STATUS_FAIL
             },
         }
+    }
+
+    gen_get_variants!{SNMPParser,
+        version   => into,
+        community => map_as_ref,
+        req_type  => map,
     }
 }
 
