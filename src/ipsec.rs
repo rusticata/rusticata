@@ -82,7 +82,7 @@ impl<'a> RParser for IPsecParser<'a> {
         R_STATUS_OK
     }
 
-    gen_get_variants!{IPsecParser,
+    gen_get_variants!{IPsecParser, "ikev2.",
         dh_group   => into,
         enc        => |s| { s.get_server_proposal_enc().map(|x| x.into()) },
         prf        => |s| { s.get_server_proposal_prf().map(|x| x.into()) },

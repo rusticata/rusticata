@@ -63,7 +63,7 @@ impl<'a> RParser for SNMPParser<'a> {
         }
     }
 
-    gen_get_variants!{SNMPParser,
+    gen_get_variants!{SNMPParser, "snmp.",
         version   => into,
         community => map_as_ref,
         req_type  => map,

@@ -78,34 +78,14 @@ impl<'a> From<&'a String> for Variant<'a> {
 }
 
 #[macro_export]
-macro_rules! gen_get_variants_old {
-    ( impl $( $pattern:expr => |$s:ident| $closure:expr ),* ) => {
-    };
-    ( $t:ident, $( $pattern:expr => |$s:ident| $closure:expr ),* ) => {
-        fn get<'b>(&'b self, key: &str) -> Option<Variant<'b>> {
-            match key {
-                $(
-                    $pattern => {
-                        let closure = |$s: &'b $t| $closure;
-                        closure(self)
-                    },
-                )*
-                _ => None,
-            }
-        }
-    };
-}
-
-
-#[macro_export]
 macro_rules! gen_get_variants {
     // Entry point
-    ($t:ident, $($body:tt)* ) => {
+    ($t:ident, $ns:tt, $($body:tt)* ) => {
         fn get<'b>(&'b self, key: &str) -> Option<Variant<'b>> {
             gen_get_variants!{ @gen_match $t {}, self, key, $($body)* }
         }
         fn keys(&self) -> ::std::slice::Iter<&str> {
-            gen_get_variants!{ @gen_keys [], $($body)* }
+            gen_get_variants!{ @gen_keys $ns [], $($body)* }
         }
     };
     //
@@ -187,27 +167,29 @@ macro_rules! gen_get_variants {
     // KEYS
     //
     // Simple closure case
-    (@gen_keys [$($arms:tt)*], $pattern:tt => |$s:ident| $closure:expr, $($tail:tt)*) => {
+    (@gen_keys $ns:tt [$($arms:tt)*], $pattern:tt => |$s:ident| $closure:expr, $($tail:tt)*) => {
         gen_get_variants!{
             @gen_keys
+            $ns
             [
-                $($arms)* stringify!{$pattern},
+                $($arms)* concat!($ns, stringify!{$pattern}),
             ],
             $($tail)*
         }
     };
     // Shortcut: into
-    (@gen_keys [$($arms:tt)*], $pattern:ident => $kw:tt, $($tail:tt)*) => {
+    (@gen_keys $ns:tt [$($arms:tt)*], $pattern:ident => $kw:tt, $($tail:tt)*) => {
         gen_get_variants!{
             @gen_keys
+            $ns
             [
-                $($arms)* stringify!{$pattern},
+                $($arms)* concat!($ns, stringify!{$pattern}),
             ],
             $($tail)*
         }
     };
     // Termination rule
-    (@gen_keys [$($keys:tt)*], /* $($body:tt)* */  $(,)* ) => {
+    (@gen_keys $ns:tt [$($keys:tt)*], /* $($body:tt)* */  $(,)* ) => {
         [
             $($keys)*
         ].iter()

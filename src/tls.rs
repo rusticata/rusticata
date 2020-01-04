@@ -419,7 +419,7 @@ impl<'a> RParser for TlsParser<'a> {
         self.parse_tcp_level(i, direction)
     }
 
-    gen_get_variants!{TlsParser,
+    gen_get_variants!{TlsParser, "tls.",
         client_version     => into,
         ssl_record_version => into,
         ja3                => map_as_ref,

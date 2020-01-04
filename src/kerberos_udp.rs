@@ -172,7 +172,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
         }
     }
 
-    gen_get_variants!{KerberosParserUDP,
+    gen_get_variants!{KerberosParserUDP, "kerberos.",
         req_type      => into,
         req_cname     => |s| { s.req_cname.as_ref().map(|x| Variant::OwnedStr(x.to_string())) },
         req_sname     => |s| { s.req_sname.as_ref().map(|x| Variant::OwnedStr(x.to_string())) },

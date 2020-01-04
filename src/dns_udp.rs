@@ -51,7 +51,7 @@ impl<'a> RParser for DnsUDPParser<'a> {
         }
     }
 
-    gen_get_variants!{DnsUDPParser,
+    gen_get_variants!{DnsUDPParser, "dns.",
         queries => |s| Some(Variant::from_slice(&s.queries)),
         answers => |s| Some(Variant::from_slice(&s.answers)),
     }

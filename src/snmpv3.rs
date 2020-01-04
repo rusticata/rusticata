@@ -50,7 +50,7 @@ impl<'a> RParser for SNMPv3Parser<'a> {
         }
     }
 
-    gen_get_variants!{SNMPv3Parser,
+    gen_get_variants!{SNMPv3Parser, "snmpv3.",
         version   => into,
         encrypted => |s| { Some(Variant::Bool(s.req_flags & 0b010 != 0)) },
         security_model => into,
