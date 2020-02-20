@@ -39,6 +39,9 @@ pub mod rparser;
 mod variant;
 pub use variant::*;
 
+mod dhcp;
+pub use dhcp::*;
+
 mod dns_tcp;
 pub use dns_tcp::{DnsTCPBuilder, DnsTCPParser, dns_probe_tcp};
 mod dns_udp;
