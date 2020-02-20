@@ -1,6 +1,10 @@
 use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL, R_STATUS_OK};
 use crate::{gen_get_variants, Variant};
-use dhcp4r::packet::Packet;
+use dhcp4r::{
+    options::DhcpOption,
+    packet::Packet
+};
+use std::net::Ipv4Addr;
 
 pub struct DHCPBuilder {}
 impl RBuilder for DHCPBuilder {
@@ -8,18 +12,20 @@ impl RBuilder for DHCPBuilder {
     fn probe(&self, i:&[u8]) -> bool { dhcp_probe(i) }
 }
 
+#[derive(Default)]
 pub struct DHCPParser<'a> {
     _name: Option<&'a[u8]>,
     reply: bool,
     xid: u32,
+    hostname: Option<String>,
+    server_identifier: Option<Ipv4Addr>,
 }
 
 impl<'a> DHCPParser<'a> {
     pub fn new(name:&[u8]) -> DHCPParser {
         DHCPParser {
             _name: Some(name),
-            reply: false,
-            xid: 0,
+            ..DHCPParser::default()
         }
     }
 }
@@ -33,6 +39,18 @@ impl<'a> RParser for DHCPParser<'a> {
                 if self.xid == 0 {
                     self.xid = pkt.xid;
                 }
+                for option in pkt.options.iter() {
+                    debug!("  DHCP option: {}", option.code());
+                    match option {
+                        DhcpOption::HostName(s) => {
+                            self.hostname = Some(s.clone());
+                        },
+                        DhcpOption::ServerIdentifier(ip4) => {
+                            self.server_identifier = Some(ip4.clone());
+                        },
+                        _ => {},
+                    }
+                }
                 R_STATUS_OK
             }
             _ => R_STATUS_FAIL
@@ -42,6 +60,8 @@ impl<'a> RParser for DHCPParser<'a> {
     gen_get_variants!{DHCPParser, "dhcp.",
         reply => into,
         xid => into,
+        hostname => |s| { s.hostname.as_ref().map(|x| Variant::OwnedStr(x.clone())) },
+        server_identifier => |s| { s.server_identifier.as_ref().map(|x| Variant::OwnedStr(x.to_string())) },
     }
 }
 
