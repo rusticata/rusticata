@@ -17,6 +17,7 @@ pub struct DHCPParser<'a> {
     _name: Option<&'a[u8]>,
     reply: bool,
     xid: u32,
+    chaddr: Option<[u8; 6]>,
     hostname: Option<String>,
     server_identifier: Option<Ipv4Addr>,
 }
@@ -39,6 +40,9 @@ impl<'a> RParser for DHCPParser<'a> {
                 if self.xid == 0 {
                     self.xid = pkt.xid;
                 }
+                if self.chaddr.is_none() {
+                    self.chaddr = Some(pkt.chaddr.clone());
+                }
                 for option in pkt.options.iter() {
                     debug!("  DHCP option: {}", option.code());
                     match option {
@@ -60,6 +64,10 @@ impl<'a> RParser for DHCPParser<'a> {
     gen_get_variants!{DHCPParser, "dhcp.",
         reply => into,
         xid => into,
+        chaddr => |s| {
+            s.chaddr.as_ref().map(|x| Variant::OwnedStr(
+                    format!("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}", x[0], x[1], x[2], x[3], x[4], x[5])))
+        },
         hostname => |s| { s.hostname.as_ref().map(|x| Variant::OwnedStr(x.clone())) },
         server_identifier => |s| { s.server_identifier.as_ref().map(|x| Variant::OwnedStr(x.to_string())) },
     }
