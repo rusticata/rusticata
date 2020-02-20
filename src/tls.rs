@@ -266,10 +266,7 @@ impl<'a> TlsParser<'a> {
                     },
                     TlsMessageHandshake::ServerKeyExchange(ref content) => {
                         // The SKE contains the chosen algorithm for the ephemeral key
-                        match self.cipher {
-                            None => (),
-                            Some (c) => { self.kx_bits = rusticata_tls_get_kx_bits(c,content.parameters,self.has_signature_algorithms) },
-                        }
+                        self.parse_dh_parameters(content);
                     },
                     _ => (),
                 }
@@ -401,6 +398,71 @@ impl<'a> TlsParser<'a> {
             }
         };
         status
+    }
+
+
+    fn parse_dh_parameters(&mut self, content: &TlsServerKeyExchangeContents) {
+        let cipher = match self.cipher {
+            Some(ref c) => c,
+            None => {
+                warn!("Trying to parse DH parameters with no ciphersuite");
+                return;
+            }
+        };
+        let extended = self.has_signature_algorithms;
+        match cipher.kx {
+            TlsCipherKx::Ecdhe |
+            TlsCipherKx::Ecdh    => {
+                // Signed ECDH params
+                match parse_content_and_signature(content.parameters, parse_ecdh_params, extended) {
+                    Ok((rem,ref parsed)) => {
+                        info!("ECDHE Parameters: {:?}", parsed);
+                        debug!("Temp key: using cipher {:?}",parsed.0.curve_params);
+                        if rem.len() > 0 {
+                            warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
+                        }
+                        match &parsed.0.curve_params.params_content {
+                            &ECParametersContent::NamedGroup(group) => {
+                                let key_bits = group.key_bits().unwrap_or(0);
+                                debug!("NamedGroup: {}, key={:?} bits", group, key_bits);
+                                self.kx_bits = Some(key_bits as u32);
+                            },
+                            c => info!("Request for key_bits of unknown group {:?}",c),
+                        }
+                    },
+                    e => error!("Could not parse ECDHE parameters {:?}",e),
+                };
+                ()
+            },
+            TlsCipherKx::Dhe => {
+                // Signed DH params
+                match parse_content_and_signature(content.parameters, parse_dh_params, extended) {
+                    Ok((rem,ref parsed)) => {
+                        if rem.len() > 0 {
+                            warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
+                        }
+                        info!("DHE Parameters: {:?}", parsed);
+                        debug!("Temp key: using DHE size_p={:?} bits",parsed.0.dh_p.len() * 8);
+                        self.kx_bits = Some((parsed.0.dh_p.len() * 8) as u32);
+                    },
+                    e => error!("Could not parse DHE parameters {:?}",e),
+                };
+                ()
+            },
+            TlsCipherKx::Dh => {
+                // Anonymous DH params
+                match parse_dh_params(content.parameters) {
+                    Ok((_,ref parsed)) => {
+                        info!("ADH Parameters: {:?}", parsed);
+                        debug!("Temp key: using ADH size_p={:?} bits",parsed.dh_p.len() * 8);
+                        self.kx_bits = Some((parsed.dh_p.len() * 8) as u32);
+                    },
+                    e => error!("Could not parse ADH parameters {:?}",e),
+                };
+                ()
+            },
+            ref kx @ _ => info!("unhandled KX algorithm: {:?}",kx),
+        };
     }
 }
 
@@ -557,63 +619,6 @@ pub extern fn rusticata_tls_mac_of_cipher(id: u16) -> u32
         Some(c) => c.mac.clone() as u32,
         None    => 0,
     }
-}
-
-fn rusticata_tls_get_kx_bits(cipher: &TlsCipherSuite, parameters: &[u8], extended: bool) -> Option<u32> {
-    match cipher.kx {
-        TlsCipherKx::Ecdhe |
-        TlsCipherKx::Ecdh    => {
-            // Signed ECDH params
-            match parse_content_and_signature(parameters,parse_ecdh_params,extended) {
-                Ok((rem,ref parsed)) => {
-                    debug!("ECDHE Parameters: {:?}",parsed);
-                    info!("Temp key: using cipher {:?}",parsed.0.curve_params);
-                    if rem.len() > 0 {
-                        warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
-                    }
-                    match &parsed.0.curve_params.params_content {
-                        &ECParametersContent::NamedGroup(group) => {
-                            let key_bits = group.key_bits().unwrap_or(0);
-                            debug!("NamedGroup: {}, key={:?} bits", group, key_bits);
-                            return Some(key_bits as u32);
-                        },
-                        c => info!("Request for key_bits of unknown group {:?}",c),
-                    }
-                },
-                e => error!("Could not parse ECDHE parameters {:?}",e),
-            };
-            ()
-        },
-        TlsCipherKx::Dhe => {
-            // Signed DH params
-            match parse_content_and_signature(parameters,parse_dh_params,extended) {
-                Ok((rem,ref parsed)) => {
-                    if rem.len() > 0 {
-                        warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
-                    }
-                    debug!("DHE Parameters: {:?}",parsed);
-                    info!("Temp key: using DHE size_p={:?} bits",parsed.0.dh_p.len() * 8);
-                    return Some((parsed.0.dh_p.len() * 8) as u32);
-                },
-                e => error!("Could not parse DHE parameters {:?}",e),
-            };
-            ()
-        },
-        TlsCipherKx::Dh => {
-            // Anonymous DH params
-            match parse_dh_params(parameters) {
-                Ok((_,ref parsed)) => {
-                    debug!("ADH Parameters: {:?}",parsed);
-                    info!("Temp key: using ADH size_p={:?} bits",parsed.dh_p.len() * 8);
-                    return Some((parsed.dh_p.len() * 8) as u32);
-                },
-                e => error!("Could not parse ADH parameters {:?}",e),
-            };
-            ()
-        },
-        ref kx @ _ => debug!("unhandled KX algorithm: {:?}",kx),
-    };
-    None
 }
 
 /// https://tools.ietf.org/html/draft-davidben-tls-grease-00
