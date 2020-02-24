@@ -25,7 +25,7 @@ impl<'a> RParser for RadiusParser<'a> {
         match parse_radius_data(i) {
             Ok((rem,ref rad)) => {
                 debug!("parse_radius_data: {:?}", rad);
-                if rem.len() > 0 {
+                if !rem.is_empty() {
                     warn!("Extra bytes after Radius data");
                 }
                 R_STATUS_OK

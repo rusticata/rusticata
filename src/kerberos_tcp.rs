@@ -41,7 +41,7 @@ impl<'a> RParser for KerberosParserTCP<'a> {
             }
         };
         let mut cur_i = tcp_buffer;
-        while cur_i.len() > 0 {
+        while !cur_i.is_empty() {
             if self.record_ts == 0 {
                 match be_u32::<(&[u8],ErrorKind)>(cur_i) {
                     Ok((rem,record)) => {
@@ -96,10 +96,10 @@ pub fn kerberos_probe_tcp(i: &[u8]) -> bool {
     match be_u32::<(&[u8],ErrorKind)>(i) {
         Ok((rem, record_mark)) => {
             if record_mark != rem.len() as u32 { return false; }
-            return kerberos_probe_udp(rem);
+            kerberos_probe_udp(rem)
         },
         _ => {
-            return false;
+            false
         },
     }
 }

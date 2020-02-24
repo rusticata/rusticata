@@ -32,7 +32,7 @@ impl<'a> RParser for IPsecNatTParser<'a> {
             },
             _ => {
                 warn!("ikev2-natt: reading record mark failed!");
-                return R_STATUS_FAIL;
+                R_STATUS_FAIL
             }
         }
     }

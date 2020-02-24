@@ -37,7 +37,7 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
                         // XXX check number, and if packets needs to be reordered
                         self.defrag_buf.extend_from_slice(ctrl.payload);
                     }
-                    if rem.len() == 0 { break; }
+                    if rem.is_empty() { break; }
                     debug!("Remaining bytes: {}", rem.len());
                     cur_i = rem;
                 },
@@ -48,8 +48,8 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
                 },
             }
         }
-        if self.defrag_buf.len() > 0 {
-            // inscpect TLS message
+        if !self.defrag_buf.is_empty() {
+            // inspect TLS message
             // debug!("TLS message:\n{}", self.defrag_buf.to_hex(16));
             self.tls_parser.parse_tcp_level(&self.defrag_buf, direction);
             self.defrag_buf.clear();
@@ -65,11 +65,10 @@ pub fn openvpn_tcp_probe(i: &[u8]) -> bool {
         Ok((rem,pkt)) => {
             match pkt.hdr.opcode {
                 Opcode::P_CONTROL_V1 => {
-                    if rem.len() > 3 && &rem[0..1] == &[0x16, 0x03] { true }
-                    else { false }
+                    rem.len() > 3 && rem[0..1] == [0x16, 0x03]
                 },
                 Opcode::P_ACK_V1 => {
-                    if rem.is_empty() { true } else { false }
+                    rem.is_empty()
                 },
                 _ => false,
             }

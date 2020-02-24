@@ -17,7 +17,7 @@ impl<'a> RParser for NtpParser<'a> {
         match parse_ntp(i) {
             Ok((rem,ref res)) => {
                 debug!("parse_ntp: {:?}",res);
-                if rem.len() > 0 {
+                if !rem.is_empty() {
                     warn!("Extra bytes after NTP data");
                 }
             },
@@ -39,11 +39,7 @@ pub fn ntp_probe(i: &[u8]) -> bool {
     if i.len() <= 2 { return false; }
     match parse_ntp(i) {
         Ok((_,ref msg)) => {
-            if msg.version == 3 || msg.version == 4 {
-                true
-            } else {
-                false
-            }
+            msg.version == 3 || msg.version == 4
         },
         _ => false,
     }

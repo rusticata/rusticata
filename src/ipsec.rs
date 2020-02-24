@@ -33,7 +33,7 @@ impl<'a> RParser for IPsecParser<'a> {
         match parse_ikev2_header(i) {
             Ok((rem,ref hdr)) => {
                 debug!("parse_ikev2_header: {:?}",hdr);
-                if rem.len() == 0 && hdr.length == 28 {
+                if rem.is_empty() && hdr.length == 28 {
                     return R_STATUS_OK;
                 }
                 // Rule 0: check version

@@ -68,13 +68,13 @@ impl<'a> SSHParser<'a> {
                 // In version 2.0, the SSH server is allowed to send an arbitrary number of
                 // UTF-8 lines before the final identification line containing the server
                 // version.
-                if crap.len() > 0 {
+                if !crap.is_empty() {
                     info!("Extra lines before SSH version:");
                     for line in crap.iter() {
                         info!("{}", line.to_hex(16));
                     }
                 }
-                if rem.len() > 0 {
+                if !rem.is_empty() {
                     warn!("Extra bytes after SSH ident data");
                 }
                 debug!("parse_ssh_identification: {:?}",res);

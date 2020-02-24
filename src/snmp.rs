@@ -32,7 +32,7 @@ impl<'a> SNMPParser<'a> {
     pub fn new(name: &'a[u8], version: u8) -> SNMPParser<'a> {
         SNMPParser{
             _name: Some(name),
-            version: version,
+            version,
             community: None,
             req_type: None,
         }
