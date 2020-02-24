@@ -53,10 +53,10 @@ pub fn dns_probe_tcp(i: &[u8]) -> bool {
             if record_len > rem.len() as u16 {
                 return false;
             }
-            return dns_probe_udp(rem);
+            dns_probe_udp(rem)
         }
         _ => {
-            return false;
+            false
         }
     }
 }

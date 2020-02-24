@@ -41,7 +41,7 @@ impl<'a> RParser for DHCPParser<'a> {
                     self.xid = pkt.xid;
                 }
                 if self.chaddr.is_none() {
-                    self.chaddr = Some(pkt.chaddr.clone());
+                    self.chaddr = Some(pkt.chaddr);
                 }
                 for option in pkt.options.iter() {
                     debug!("  DHCP option: {}", option.code());
@@ -50,7 +50,7 @@ impl<'a> RParser for DHCPParser<'a> {
                             self.hostname = Some(s.clone());
                         },
                         DhcpOption::ServerIdentifier(ip4) => {
-                            self.server_identifier = Some(ip4.clone());
+                            self.server_identifier = Some(*ip4);
                         },
                         _ => {},
                     }
