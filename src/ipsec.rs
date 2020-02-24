@@ -1,5 +1,3 @@
-use std;
-
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
 
