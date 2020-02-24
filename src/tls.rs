@@ -140,6 +140,7 @@ impl<'a> TlsParser<'a> {
     }
 
     /// Message-level TLS parsing
+    #[allow(clippy::cognitive_complexity)]
     pub fn parse_message_level(&mut self, msg: &TlsMessage, direction:u8) -> u32 {
         trace!("parse_message_level {:?}",msg);
         let mut status = R_STATUS_OK;
@@ -179,8 +180,7 @@ impl<'a> TlsParser<'a> {
                                         TlsExtension::SignatureAlgorithms(_) => self.has_signature_algorithms = true,
                                         TlsExtension::SNI(ref v) => {
                                             for &(t,sni) in v {
-                                                let s = String::from_utf8(sni.to_vec());
-                                                match s {
+                                                match String::from_utf8(sni.to_vec()) {
                                                     Ok(name) => {
                                                         debug!("SNI: {} {:?}",t,name);
                                                         self.sni.push(name)
@@ -310,7 +310,7 @@ impl<'a> TlsParser<'a> {
                 v = self.buffer.split_off(0);
                 // sanity check vector length to avoid memory exhaustion
                 // maximum length may be 2^24 (handshake message)
-                if self.buffer.len() + r.data.len() > 16777216 {
+                if self.buffer.len() + r.data.len() > 16_777_216 {
                     self.events.push(TlsParserEvents::RecordOverflow as u32);
                     return R_STATUS_EVENTS;
                 };
@@ -331,7 +331,7 @@ impl<'a> TlsParser<'a> {
                 for msg in msg_list {
                     status |= self.parse_message_level(msg, direction);
                 };
-                if rem2.len() > 0 {
+                if !rem2.is_empty() {
                     warn!("extra bytes in TLS record: {:?}",rem2);
                     self.events.push(TlsParserEvents::RecordWithExtraBytes as u32);
                     status |= R_STATUS_EVENTS;
@@ -367,7 +367,7 @@ impl<'a> TlsParser<'a> {
                 v = self.tcp_buffer.split_off(0);
                 // sanity check vector length to avoid memory exhaustion
                 // maximum length may be 2^24 (handshake message)
-                if self.tcp_buffer.len() + i.len() > 16777216 {
+                if self.tcp_buffer.len() + i.len() > 16_777_216 {
                     self.events.push(TlsParserEvents::RecordOverflow as u32);
                     return R_STATUS_EVENTS;
                 };
@@ -377,7 +377,7 @@ impl<'a> TlsParser<'a> {
         };
         // trace!("tcp_buffer ({})",tcp_buffer.len());
         let mut cur_i = tcp_buffer;
-        while cur_i.len() > 0 {
+        while !cur_i.is_empty() {
             match parse_tls_raw_record(cur_i) {
                 Ok((rem, ref r)) => {
                     // trace!("rem: {:?}",rem);
@@ -406,7 +406,7 @@ impl<'a> TlsParser<'a> {
             }
         };
         let extended = self.has_signature_algorithms;
-        match cipher.kx {
+        match &cipher.kx {
             TlsCipherKx::Ecdhe |
             TlsCipherKx::Ecdh    => {
                 // Signed ECDH params
@@ -414,7 +414,7 @@ impl<'a> TlsParser<'a> {
                     Ok((rem,ref parsed)) => {
                         info!("ECDHE Parameters: {:?}", parsed);
                         debug!("Temp key: using cipher {:?}",parsed.0.curve_params);
-                        if rem.len() > 0 {
+                        if !rem.is_empty() {
                             warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
                         }
                         match &parsed.0.curve_params.params_content {
@@ -428,13 +428,12 @@ impl<'a> TlsParser<'a> {
                     },
                     e => error!("Could not parse ECDHE parameters {:?}",e),
                 };
-                ()
             },
             TlsCipherKx::Dhe => {
                 // Signed DH params
                 match parse_content_and_signature(content.parameters, parse_dh_params, extended) {
                     Ok((rem,ref parsed)) => {
-                        if rem.len() > 0 {
+                        if !rem.is_empty() {
                             warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
                         }
                         info!("DHE Parameters: {:?}", parsed);
@@ -443,7 +442,6 @@ impl<'a> TlsParser<'a> {
                     },
                     e => error!("Could not parse DHE parameters {:?}",e),
                 };
-                ()
             },
             TlsCipherKx::Dh => {
                 // Anonymous DH params
@@ -455,9 +453,8 @@ impl<'a> TlsParser<'a> {
                     },
                     e => error!("Could not parse ADH parameters {:?}",e),
                 };
-                ()
             },
-            ref kx @ _ => info!("unhandled KX algorithm: {:?}",kx),
+            kx => info!("unhandled KX algorithm: {:?}",kx),
         };
     }
 }
@@ -466,7 +463,7 @@ impl<'a> RParser for TlsParser<'a> {
     fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
         trace!("[TLS->parse: direction={}, len={}]",direction,i.len());
 
-        if i.len() == 0 {
+        if i.is_empty() {
             // Connection closed ?
             return R_STATUS_OK;
         };
@@ -535,7 +532,7 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<
 
     for ext in extensions {
         match ext {
-            &TlsExtension::EllipticCurves(ref ec) => {
+            TlsExtension::EllipticCurves(ref ec) => {
                 ja3.push_str(&ec.iter()
                              .map(|x| x.0)
                              .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
@@ -548,7 +545,7 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<
 
     for ext in extensions {
         match ext {
-            &TlsExtension::EcPointFormats(ref pf) => {
+            TlsExtension::EcPointFormats(ref pf) => {
                 ja3.push_str(&pf.iter().join("-"));
             },
             _ => (),
@@ -558,7 +555,7 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<
     ja3
 }
 
-fn is_tls13(_content: &TlsServerHelloContents, extensions: &Vec<TlsExtension>) -> bool {
+fn is_tls13(_content: &TlsServerHelloContents, extensions: &[TlsExtension]) -> bool {
     // look extensions, find the TlsSupportedVersion
     extensions.iter()
         .find(|&ext| TlsExtensionType::SupportedVersions == ext.into())
@@ -576,7 +573,7 @@ fn is_tls13(_content: &TlsServerHelloContents, extensions: &Vec<TlsExtension>) -
 mod tests {
     use super::*;
 
-    static CH: &'static [u8] = include_bytes!("../assets/client-hello.bin");
+    static CH: &[u8] = include_bytes!("../assets/client-hello.bin");
 
     #[test]
     fn tls_get() {

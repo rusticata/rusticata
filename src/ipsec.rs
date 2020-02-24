@@ -119,6 +119,7 @@ impl<'a> IPsecParser<'a> {
     get_server_proposal!{DH, get_server_proposal_dh}
     get_server_proposal!{ESN, get_server_proposal_esn}
 
+    #[allow(clippy::cognitive_complexity)]
     fn add_proposals(&mut self, prop: &Vec<IkeV2Proposal>, direction: u8) {
         debug!("num_proposals: {}",prop.len());
         for ref p in prop {
@@ -153,8 +154,8 @@ impl<'a> IPsecParser<'a> {
             debug!("Proposals\n{:?}",proposals);
             // Rule 1: warn on weak or unknown transforms
             for prop in &proposals {
-                match prop {
-                    &IkeV2Transform::Encryption(ref enc) => {
+                match *prop {
+                    IkeV2Transform::Encryption(ref enc) => {
                         match *enc {
                             IkeTransformEncType::ENCR_DES_IV64 |
                             IkeTransformEncType::ENCR_DES |
@@ -171,12 +172,11 @@ impl<'a> IPsecParser<'a> {
                             _ => (),
                         }
                     },
-                    &IkeV2Transform::Auth(ref auth) => {
+                    IkeV2Transform::Auth(ref auth) => {
                         match *auth {
                             IkeTransformAuthType::NONE => {
-                                // Note: this could be expected with an AEAD encription alg.
+                                // Note: this could be expected with an AEAD encryption alg.
                                 // See rule 4
-                                ()
                             },
                             IkeTransformAuthType::AUTH_HMAC_MD5_96 |
                             IkeTransformAuthType::AUTH_HMAC_SHA1_96 |
@@ -190,7 +190,7 @@ impl<'a> IPsecParser<'a> {
                             _ => (),
                         }
                     },
-                    &IkeV2Transform::DH(ref dh) => {
+                    IkeV2Transform::DH(ref dh) => {
                         match *dh {
                             IkeTransformDHType::None => {
                                 warn!("'None' DH transform proposed");
@@ -204,7 +204,7 @@ impl<'a> IPsecParser<'a> {
                             _ => (),
                         }
                     },
-                    &IkeV2Transform::Unknown(tx_type,tx_id) => {
+                    IkeV2Transform::Unknown(tx_type,tx_id) => {
                         warn!("Unknown proposal: type={}, id={}", tx_type.0, tx_id);
                     },
                     _ => (),
@@ -212,7 +212,7 @@ impl<'a> IPsecParser<'a> {
             }
             // Rule 2: check if no DH was proposed
             if ! proposals.iter().any(|x| {
-                if let &IkeV2Transform::DH(_) = x { true } else { false }
+                if let IkeV2Transform::DH(_) = x { true } else { false }
             })
             {
                 warn!("No DH transform found");
@@ -223,21 +223,25 @@ impl<'a> IPsecParser<'a> {
             }
             // Rule 4: lack of integrity is accepted only if using an AEAD proposal
             // Look if no auth was proposed, including if proposal is Auth::None
-            if ! proposals.iter().any(|x| {
-                match *x {
-                    IkeV2Transform::Auth(IkeTransformAuthType::NONE) => false,
-                    IkeV2Transform::Auth(_)                          => true,
-                    _                                                 => false,
-                }
-            })
-            {
-                if ! proposals.iter().any(|x| {
-                    if let &IkeV2Transform::Encryption(ref enc) = x {
+            fn has_auth(proposals: &[IkeV2Transform]) -> bool {
+                proposals.iter().any(|x| {
+                    match *x {
+                        IkeV2Transform::Auth(IkeTransformAuthType::NONE) => false,
+                        IkeV2Transform::Auth(_)                          => true,
+                        _                                                => false,
+                    }
+                })
+            }
+            fn has_gcm(proposals: &[IkeV2Transform]) -> bool {
+                proposals.iter().any(|x| {
+                    if let IkeV2Transform::Encryption(ref enc) = x {
                         enc.is_aead()
                     } else { false }
-                }) {
-                    warn!("No integrity transform found");
-                }
+                })
+            }
+            if !has_auth(&proposals) && !has_gcm(&proposals)
+            {
+                warn!("No integrity transform found");
             }
             // Rule 5: Check if an integrity and no integrity are part of the same proposal ?
             // XXX

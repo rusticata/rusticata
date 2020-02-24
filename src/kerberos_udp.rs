@@ -46,6 +46,7 @@ pub fn to_hex_string(bytes: &[u8]) -> String {
 }
 
 impl<'a> RParser for KerberosParserUDP<'a> {
+    #[allow(clippy::cognitive_complexity)]
     fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
         match der_read_element_header(i) {
             Ok((_rem,hdr)) => {
@@ -62,9 +63,8 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                             debug!("AS-REQ realm: {:?}", kdc_req.req_body.realm);
                             debug!("AS-REQ sname: {:?}", kdc_req.req_body.sname);
                             debug!("AS-REQ addrs: {:?}", kdc_req.req_body.addresses);
-                            match kdc_req.req_body.kdc_options.as_slice() {
-                                Ok(s)  => debug!("AS-REQ kdc_options: {}", to_hex_string(s)),
-                                Err(_) => (),
+                            if let Ok(s) = kdc_req.req_body.kdc_options.as_slice() {
+                                debug!("AS-REQ kdc_options: {}", to_hex_string(s))
                             }
                             self.req_cname = kdc_req.req_body.cname;
                             self.req_sname = kdc_req.req_body.sname;
@@ -102,15 +102,14 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                             self.req_cname = kdc_req.req_body.cname;
                             self.req_sname = kdc_req.req_body.sname;
                             self.req_crealm = Some(kdc_req.req_body.realm);
-                            for ref padata in kdc_req.padata.iter() {
+                            for padata in &kdc_req.padata {
                                 // SCLogInfo!("TGS-REQ padata: {:?}", padata);
                                 if padata.padata_type == PAType::PA_TGS_REQ {
                                     match krb5_parser::parse_ap_req(padata.padata_value) {
                                         Ok((_,ap_req)) => {
                                             // SCLogInfo!("parse_ap_req: {:?}",ap_req);
-                                            match ap_req.ap_options.as_slice() {
-                                                Ok(s)  => debug!("TGS-REQ AP-REQ ap_options: {}", to_hex_string(s)),
-                                                Err(_) => (),
+                                            if let Ok(s) = ap_req.ap_options.as_slice() {
+                                                debug!("TGS-REQ AP-REQ ap_options: {}", to_hex_string(s))
                                             }
                                             debug!("TGS-REQ AP-REQ ticket.sname: {:?}", ap_req.ticket.sname);
                                             debug!("TGS-REQ AP-REQ ticket.realm: {:?}", ap_req.ticket.realm);
@@ -221,11 +220,8 @@ pub fn kerberos_probe_udp(i: &[u8]) -> bool {
             // debug!("hdr: {:?}", hdr);
             if let Ok((rem,_hdr)) = der_read_element_header(rem) {
                 if rem.len() > 5 {
-                    match (rem[2],rem[3],rem[4]) {
-                        // Encoding of DER integer 5 (version)
-                        (2,1,5) => { return true; },
-                        _       => (),
-                    }
+                    // Encoding of DER integer 5 (version)
+                    return rem[2..5] == [2,1,5];
                 }
             }
             false

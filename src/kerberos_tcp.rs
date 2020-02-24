@@ -30,7 +30,7 @@ impl<'a> RParser for KerberosParserTCP<'a> {
             0 => buf,
             _ => {
                 // sanity check to avoid memory exhaustion
-                if self.defrag_buf_ts.len() + buf.len() > 100000 {
+                if self.defrag_buf_ts.len() + buf.len() > 100_000 {
                     warn!("krb5_parse_tcp: TCP buffer exploded {} {}",
                                 self.defrag_buf_ts.len(), buf.len());
                     return R_STATUS_FAIL;
