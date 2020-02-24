@@ -10,6 +10,11 @@ pub trait RParser : Send + Sync {
     // XXX static functions seem to cause problems with hashmaps
     // fn probe(&[u8]) -> bool;
 
+    /// Configure parser
+    ///
+    /// It is up to each parser to describe valid keys and expected types for values
+    fn configure(&mut self, _key: u32, _value: &Variant) { }
+
     /// Parsing function
     ///
     /// This function is called for every packet of a connection.
