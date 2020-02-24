@@ -10,11 +10,7 @@
 //!
 //! When the session becomes encrypted, messages are not parsed anymore.
 
-extern crate libc;
-
-use std::mem;
 use std::convert::From;
-use libc::c_char;
 
 use nom::*;
 
@@ -466,9 +462,6 @@ impl<'a> TlsParser<'a> {
     }
 }
 
-r_declare_state_new!(r_tls_state_new,TlsParser,b"TLS parser");
-r_declare_state_free!(r_tls_state_free,TlsParser,{ () });
-
 impl<'a> RParser for TlsParser<'a> {
     fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
         trace!("[TLS->parse: direction={}, len={}]",direction,i.len());
@@ -500,124 +493,6 @@ pub fn tls_probe(i: &[u8]) -> bool {
     match (i[0],i[1],i[2]) {
         (0x14..=0x17,0x03,0..=3) => true,
         _ => false,
-    }
-}
-
-r_implement_probe!(r_tls_probe,tls_probe);
-r_implement_parse!(r_tls_parse,TlsParser);
-
-// --------------------------------------------
-
-
-
-
-
-#[no_mangle]
-pub extern fn r_tls_get_next_event(this: &mut TlsParser) -> u32
-{
-    match this.events.pop() {
-        None     => 0xffffffff,
-        Some(ev) => ev,
-    }
-}
-
-/// Get the select ciphersuite
-///
-/// Returns the selected ciphersuite identifier, or 0 if not yet known.
-#[no_mangle]
-pub extern fn rusticata_tls_get_cipher(this: &TlsParser) -> u32
-{
-    match this.cipher {
-        None    => 0,
-        Some(c) => c.id.into(),
-    }
-}
-
-/// Get the select compression method
-///
-/// Returns the selected compression method, or 0 if not yet known.
-#[no_mangle]
-pub extern fn rusticata_tls_get_compression(this: &TlsParser) -> u32
-{
-    match this.compression {
-        None    => 0,
-        Some(c) => c.0 as u32
-    }
-}
-
-/// Get the exchanged key size
-///
-/// Returns the selected size of the key exchange, or 0 if not yet known.
-#[no_mangle]
-pub extern fn rusticata_tls_get_dh_key_bits(this: &TlsParser) -> u32
-{
-    this.kx_bits.unwrap_or(0) as u32
-}
-
-
-
-
-// /// Get the ciphersuite IANA identifier
-// ///
-// /// Given a ciphersuite name, return the IANA identifier, or 0 if not found
-// #[no_mangle]
-// pub extern fn rusticata_tls_cipher_of_string(value: *const c_char) -> u32
-// {
-//     let c_str = unsafe { CStr::from_ptr(value) };
-//     let s = c_str.to_str().unwrap();
-//     match TlsCipherSuite::from_name(s) {
-//         Some(c) => c.id as u32,
-//         None    => 0,
-//     }
-// }
-
-/// Get the ciphersuite key exchange method
-#[no_mangle]
-pub extern fn rusticata_tls_kx_of_cipher(id: u16) -> u32
-{
-    match TlsCipherSuite::from_id(id) {
-        Some(c) => c.kx.clone() as u32,
-        None    => 0,
-    }
-}
-
-/// Get the ciphersuite authentication method
-#[no_mangle]
-pub extern fn rusticata_tls_au_of_cipher(id: u16) -> u32
-{
-    match TlsCipherSuite::from_id(id) {
-        Some(c) => c.au.clone() as u32,
-        None    => 0,
-    }
-}
-
-/// Get the ciphersuite encryption method
-#[no_mangle]
-pub extern fn rusticata_tls_enc_of_cipher(id: u16) -> u32
-{
-    match TlsCipherSuite::from_id(id) {
-        Some(c) => c.enc.clone() as u32,
-        None    => 0,
-    }
-}
-
-/// Get the ciphersuite encryption mode
-#[no_mangle]
-pub extern fn rusticata_tls_encmode_of_cipher(id: u16) -> u32
-{
-    match TlsCipherSuite::from_id(id) {
-        Some(c) => c.enc_mode.clone() as u32,
-        None    => 0,
-    }
-}
-
-/// Get the ciphersuite MAC method
-#[no_mangle]
-pub extern fn rusticata_tls_mac_of_cipher(id: u16) -> u32
-{
-    match TlsCipherSuite::from_id(id) {
-        Some(c) => c.mac.clone() as u32,
-        None    => 0,
     }
 }
 

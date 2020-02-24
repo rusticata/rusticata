@@ -1,8 +1,4 @@
-extern crate libc;
-
 use std;
-use std::mem;
-use libc::c_char;
 
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
@@ -282,9 +278,3 @@ pub fn ipsec_probe(i: &[u8]) -> bool {
         _ => false,
     }
 }
-
-r_declare_state_new!(r_ipsec_state_new,IPsecParser,b"IPsec state");
-r_declare_state_free!(r_ipsec_state_free,IPsecParser,{ () });
-
-r_implement_probe!(r_ipsec_probe,ipsec_probe);
-r_implement_parse!(r_ipsec_parse,IPsecParser);
