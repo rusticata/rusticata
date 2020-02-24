@@ -32,6 +32,7 @@ pub struct SSHParser<'a> {
 }
 
 fn pretty_print_ssh_packet(pkt: &(SshPacket,&[u8])) {
+    #[allow(clippy::single_match)]
     match pkt.0 {
         SshPacket::KeyExchange(ref kex) => {
             debug!("kex algs: {:?}", kex.get_kex_algs());

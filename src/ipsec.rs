@@ -120,12 +120,12 @@ impl<'a> IPsecParser<'a> {
     get_server_proposal!{ESN, get_server_proposal_esn}
 
     #[allow(clippy::cognitive_complexity)]
-    fn add_proposals(&mut self, prop: &Vec<IkeV2Proposal>, direction: u8) {
+    fn add_proposals(&mut self, prop: &[IkeV2Proposal], direction: u8) {
         debug!("num_proposals: {}",prop.len());
-        for ref p in prop {
+        for p in prop {
             debug!("proposal: {:?}",p);
             debug!("num_transforms: {}",p.num_transforms);
-            for ref xform in &p.transforms {
+            for xform in &p.transforms {
                 debug!("transform: {:?}", xform);
                 debug!("\ttype: {:?}", xform.transform_type);
                 match xform.transform_type {
@@ -211,9 +211,12 @@ impl<'a> IPsecParser<'a> {
                 }
             }
             // Rule 2: check if no DH was proposed
-            if ! proposals.iter().any(|x| {
-                if let IkeV2Transform::DH(_) = x { true } else { false }
-            })
+            fn has_dh(proposals: &[IkeV2Transform]) -> bool {
+                proposals.iter().any(|x| {
+                    if let IkeV2Transform::DH(_) = x { true } else { false }
+                })
+            }
+            if !has_dh(&proposals)
             {
                 warn!("No DH transform found");
             }

@@ -219,11 +219,11 @@ impl<'a> TlsParser<'a> {
                             if is_tls13(content, extensions) {
                                 debug!("TLS 1.3 found");
                                 // check ciphers
-                                self.cipher.map(|c| {
+                                if let Some(c) = self.cipher {
                                     if c.kx != TlsCipherKx::Tls13 {
                                         warn!("TLS 1.3 ServerHello with invalid cipher {:?}", c);
                                     }
-                                });
+                                }
                             }
                         }
                     },
@@ -515,7 +515,7 @@ const GREASE_TABLE : &[u16] = &[
 
 
 /// SSLVersion,Cipher,SSLExtension,EllipticCurve,EllipticCurvePointFormat
-pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<TlsExtension>) -> String {
+pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &[TlsExtension]) -> String {
     let mut ja3 = format!("{},",u16::from(content.version));
 
     let ciphers = content.ciphers.iter().join("-");
@@ -523,32 +523,26 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &Vec<
     ja3.push(',');
 
     let ext_str = extensions.iter()
-        .map(|x| TlsExtensionType::from(x))
-        .map(|x| u16::from(x))
+        .map(TlsExtensionType::from)
+        .map(|x| x.0)
         .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
         .join("-");
     ja3.push_str(&ext_str);
     ja3.push(',');
 
     for ext in extensions {
-        match ext {
-            TlsExtension::EllipticCurves(ref ec) => {
-                ja3.push_str(&ec.iter()
-                             .map(|x| x.0)
-                             .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
-                             .join("-"));
-            },
-            _ => (),
+        if let TlsExtension::EllipticCurves(ref ec) = ext {
+            ja3.push_str(&ec.iter()
+                 .map(|x| x.0)
+                 .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
+                 .join("-"));
         }
     }
     ja3.push(',');
 
     for ext in extensions {
-        match ext {
-            TlsExtension::EcPointFormats(ref pf) => {
-                ja3.push_str(&pf.iter().join("-"));
-            },
-            _ => (),
+        if let TlsExtension::EcPointFormats(ref pf) = ext {
+            ja3.push_str(&pf.iter().join("-"));
         }
     }
 
