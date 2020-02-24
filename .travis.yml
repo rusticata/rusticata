@@ -6,12 +6,20 @@ matrix:
       env:
        - NAME="stable"
        - FEATURES=''
+    - rust: stable
+      env:
+       - NAME="stable,clippy"
+       - FEATURES=''
+       - CLIPPY=yes
     - rust: nightly
       env:
        - NAME="nightly"
        - FEATURES=''
        - BENCH=1
+before_script:
+  - ([ "$CLIPPY" != yes ] || rustup component add clippy)
 script:
+  - ([ "$CLIPPY" != yes ] || cargo clippy -- -D clippy::all)
   - |
       cargo build --verbose --features "$FEATURES" &&
       cargo test --verbose --features "$FEATURES" &&
