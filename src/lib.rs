@@ -2,26 +2,8 @@
     unstable_features,
     unused_import_braces, unused_qualifications)]
 
-extern crate nom;
-
 #[macro_use]
 extern crate log;
-
-extern crate itertools;
-
-extern crate md5;
-
-extern crate dns_parser;
-extern crate der_parser;
-extern crate ipsec_parser;
-extern crate kerberos_parser;
-extern crate ntp_parser;
-extern crate openvpn_parser;
-extern crate radius_parser;
-extern crate snmp_parser;
-extern crate ssh_parser;
-extern crate tls_parser;
-extern crate x509_parser;
 
 pub use rparser::*;
 #[macro_use]
