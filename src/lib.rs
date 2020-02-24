@@ -7,7 +7,7 @@ extern crate log;
 
 pub use rparser::*;
 #[macro_use]
-pub mod rparser;
+mod rparser;
 
 mod variant;
 pub use variant::*;
