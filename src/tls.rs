@@ -33,7 +33,7 @@ use tls_parser::tls_states::{TlsState,tls_state_transition};
 
 pub struct TLSBuilder {}
 impl RBuilder for TLSBuilder {
-    fn new(&self) -> Box<dyn RParser> { Box::new(TlsParser::new(b"TLS")) }
+    fn build(&self) -> Box<dyn RParser> { Box::new(TlsParser::new(b"TLS")) }
     fn probe(&self, i:&[u8]) -> bool { tls_probe(i) }
 }
 

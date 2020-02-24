@@ -5,7 +5,7 @@ use nom::number::streaming::be_u32;
 
 pub struct IPsecNatTBuilder {}
 impl RBuilder for IPsecNatTBuilder {
-    fn new(&self) -> Box<dyn RParser> { Box::new(IPsecNatTParser::new(b"IKEv2-NatT")) }
+    fn build(&self) -> Box<dyn RParser> { Box::new(IPsecNatTParser::new(b"IKEv2-NatT")) }
     fn probe(&self, i:&[u8]) -> bool { ipsec_probe(i) }
 }
 

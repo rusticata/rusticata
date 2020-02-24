@@ -6,7 +6,7 @@ use kerberos_parser::krb5::{EncryptionType, ErrorCode, PAType, PrincipalName, Re
 
 pub struct KerberosUDPBuilder {}
 impl RBuilder for KerberosUDPBuilder {
-    fn new(&self) -> Box<dyn RParser> { Box::new(KerberosParserUDP::new(b"Kerberos/UDP")) }
+    fn build(&self) -> Box<dyn RParser> { Box::new(KerberosParserUDP::new(b"Kerberos/UDP")) }
     fn probe(&self, i:&[u8]) -> bool { kerberos_probe_udp(i) }
 }
 

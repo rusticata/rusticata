@@ -3,7 +3,7 @@ use radius_parser::parse_radius_data;
 
 pub struct RadiusBuilder {}
 impl RBuilder for RadiusBuilder {
-    fn new(&self) -> Box<dyn RParser> { Box::new(RadiusParser::new(b"Radius")) }
+    fn build(&self) -> Box<dyn RParser> { Box::new(RadiusParser::new(b"Radius")) }
     fn probe(&self, i:&[u8]) -> bool { radius_probe(i) }
 }
 

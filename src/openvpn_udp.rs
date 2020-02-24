@@ -4,7 +4,7 @@ use openvpn_parser::*;
 
 pub struct OpenVPNUDPBuilder {}
 impl RBuilder for OpenVPNUDPBuilder {
-    fn new(&self) -> Box<dyn RParser> { Box::new(OpenVPNUDPParser::new(b"OpenVPN/UDP")) }
+    fn build(&self) -> Box<dyn RParser> { Box::new(OpenVPNUDPParser::new(b"OpenVPN/UDP")) }
     fn probe(&self, i:&[u8]) -> bool { openvpn_udp_probe(i) }
 }
 

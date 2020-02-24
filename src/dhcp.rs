@@ -8,7 +8,7 @@ use std::net::Ipv4Addr;
 
 pub struct DHCPBuilder {}
 impl RBuilder for DHCPBuilder {
-    fn new(&self) -> Box<dyn RParser> { Box::new(DHCPParser::new(b"DHCP")) }
+    fn build(&self) -> Box<dyn RParser> { Box::new(DHCPParser::new(b"DHCP")) }
     fn probe(&self, i:&[u8]) -> bool { dhcp_probe(i) }
 }
 
