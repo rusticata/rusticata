@@ -14,7 +14,7 @@ pub enum Variant<'a> {
     U64(u64),
     USize(usize),
 
-    List(Box<Vec<Variant<'a>>>),
+    List(Vec<Variant<'a>>),
 
     OwnedStr(String),
 }
@@ -25,15 +25,7 @@ impl<'a> Variant<'a> {
         Variant<'a>: From<&'a T>,
     {
         let v = v.iter().map(|s| Variant::from(s)).collect();
-        Variant::List(Box::new(v))
-    }
-
-    pub fn from_vec<T>(v: &'a Vec<T>) -> Variant<'a>
-    where
-        Variant<'a>: From<&'a T>,
-    {
-        let v = v.iter().map(|s| Variant::from(s)).collect();
-        Variant::List(Box::new(v))
+        Variant::List(v)
     }
 }
 
