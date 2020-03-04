@@ -46,9 +46,8 @@ impl<'a> RParser for IPsecParser<'a> {
                         for payload in p {
                             match payload.content {
                                 IkeV2PayloadContent::SA(ref prop) => {
-                                    // if hdr.flags & IKEV2_FLAG_INITIATOR != 0 {
-                                        self.add_proposals(prop, direction);
-                                    // }
+                                    let is_initiator = hdr.flags & IKEV2_FLAG_INITIATOR != 0;
+                                    self.add_proposals(prop, is_initiator);
                                 },
                                 IkeV2PayloadContent::KE(ref kex) => {
                                     debug!("KEX {:?}", kex.dh_group);
@@ -120,7 +119,7 @@ impl<'a> IPsecParser<'a> {
     get_server_proposal!{ESN, get_server_proposal_esn}
 
     #[allow(clippy::cognitive_complexity)]
-    fn add_proposals(&mut self, prop: &[IkeV2Proposal], direction: u8) {
+    fn add_proposals(&mut self, prop: &[IkeV2Proposal], is_initiator: bool) {
         debug!("num_proposals: {}",prop.len());
         for p in prop {
             debug!("proposal: {:?}",p);
@@ -249,7 +248,7 @@ impl<'a> IPsecParser<'a> {
             // Rule 5: Check if an integrity and no integrity are part of the same proposal ?
             // XXX
             // Finally
-            if direction == STREAM_TOSERVER {
+            if is_initiator {
                 self.client_proposals.push(proposals);
             } else {
                 self.server_proposals.push(proposals);
