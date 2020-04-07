@@ -39,7 +39,7 @@ mod openvpn_udp;
 pub use openvpn_udp::{OpenVPNUDPBuilder,OpenVPNUDPParser,openvpn_udp_probe};
 
 mod radius;
-pub use radius::{RadiusBuilder,RadiusParser};
+pub use radius::{radius_probe,RadiusBuilder,RadiusParser};
 
 mod snmp;
 pub use snmp::{SNMPv1Builder,SNMPv2cBuilder,SNMPParser,snmp_probe,snmpv1_probe,snmpv2c_probe};
