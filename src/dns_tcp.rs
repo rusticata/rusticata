@@ -1,4 +1,4 @@
-use crate::{dns_probe_udp, DnsUDPParser};
+use crate::dns_udp::{dns_probe_udp, DnsUDPParser};
 use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL};
 use nom::error::ErrorKind;
 use nom::number::streaming::be_u16;
