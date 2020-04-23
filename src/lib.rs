@@ -7,12 +7,12 @@ extern crate log;
 
 #[macro_use]
 mod rparser;
-mod rprobe;
 pub use rparser::*;
-pub use rprobe::*;
 
 mod variant;
 pub use variant::*;
+
+pub mod prologue;
 
 pub mod dhcp;
 pub mod dns_tcp;
