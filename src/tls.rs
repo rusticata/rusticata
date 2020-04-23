@@ -16,8 +16,6 @@ use nom::*;
 
 use itertools::Itertools;
 
-use md5;
-
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
 use x509_parser::parse_x509_der;
