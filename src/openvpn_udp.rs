@@ -1,11 +1,11 @@
-use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+use crate::rparser::*;
 use crate::tls::TlsParser;
 use openvpn_parser::*;
 
 pub struct OpenVPNUDPBuilder {}
 impl RBuilder for OpenVPNUDPBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(OpenVPNUDPParser::new(b"OpenVPN/UDP")) }
-    fn probe(&self, i:&[u8]) -> bool { openvpn_udp_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(openvpn_udp_probe) }
 }
 
 pub struct OpenVPNUDPParser<'a> {
@@ -57,8 +57,8 @@ impl<'a> RParser for OpenVPNUDPParser<'a> {
     }
 }
 
-pub fn openvpn_udp_probe(i: &[u8]) -> bool {
-    if i.len() <= 20 { return false; }
+pub fn openvpn_udp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 20 { return ProbeResult::NotForUs; }
     // XXX
     match parse_openvpn_udp(i) {
         Ok((rem,pkt)) => {
@@ -73,6 +73,6 @@ pub fn openvpn_udp_probe(i: &[u8]) -> bool {
             }
         },
         _ => false,
-    }
+    }.into()
 }
 

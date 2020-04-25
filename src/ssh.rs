@@ -1,11 +1,11 @@
-use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL,STREAM_TOSERVER};
-use nom::{Err,HexDisplay};
-use ssh_parser::{ssh,SshPacket};
+use crate::rparser::*;
+use nom::{Err, HexDisplay};
+use ssh_parser::{ssh, SshPacket};
 
 pub struct SSHBuilder {}
 impl RBuilder for SSHBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(SSHParser::new(b"SSH")) }
-    fn probe(&self, i:&[u8]) -> bool { ssh_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(ssh_probe) }
 }
 
 #[derive(Debug,PartialEq)]
@@ -165,9 +165,9 @@ impl<'a> RParser for SSHParser<'a> {
     }
 }
 
-pub fn ssh_probe(i: &[u8]) -> bool {
-    if i.len() <= 4 { return false; }
-    if &i[..4] == b"SSH-" { return true; }
-    false
+pub fn ssh_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 4 { return ProbeResult::Unsure; }
+    if &i[..4] == b"SSH-" { return ProbeResult::Certain; }
+    ProbeResult::NotForUs
 }
 

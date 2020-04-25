@@ -1,4 +1,4 @@
-use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL, STREAM_TOSERVER};
+use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
 use der_parser::ber::{BerObjectContent, parse_ber_sequence};
 use snmp_parser::{parse_snmp_v1,parse_snmp_v2c, PduType};
@@ -6,13 +6,13 @@ use snmp_parser::{parse_snmp_v1,parse_snmp_v2c, PduType};
 pub struct SNMPv1Builder {}
 impl RBuilder for SNMPv1Builder {
     fn build(&self) -> Box<dyn RParser> { Box::new(SNMPParser::new(b"SNMPv1",1)) }
-    fn probe(&self, i:&[u8]) -> bool { snmpv1_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(snmpv1_probe) }
 }
 
 pub struct SNMPv2cBuilder {}
 impl RBuilder for SNMPv2cBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(SNMPParser::new(b"SNMPv2c",2)) }
-    fn probe(&self, i:&[u8]) -> bool { snmpv2c_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(snmpv2c_probe) }
 }
 
 pub struct SNMPParser<'a> {
@@ -95,21 +95,21 @@ pub fn parse_pdu_enveloppe_version(i:&[u8]) -> Option<u32> {
     }
 }
 
-pub fn snmp_probe(i: &[u8]) -> bool {
-    if i.len() <= 20 { return false; }
+pub fn snmp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 20 { return ProbeResult::NotForUs; }
     match parse_pdu_enveloppe_version(i) {
         Some(1) |
-        Some(2)   => true,
-        _         => false,
+        Some(2)   => ProbeResult::Certain,
+        _         => ProbeResult::NotForUs,
     }
 }
 
-pub fn snmpv1_probe(i: &[u8]) -> bool {
-    if i.len() <= 20 { return false; }
-    parse_pdu_enveloppe_version(i) == Some(1)
+pub fn snmpv1_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 20 { return ProbeResult::NotForUs; }
+    (parse_pdu_enveloppe_version(i) == Some(1)).into()
 }
 
-pub fn snmpv2c_probe(i: &[u8]) -> bool {
-    if i.len() <= 20 { return false; }
-    parse_pdu_enveloppe_version(i) == Some(2)
+pub fn snmpv2c_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 20 { return ProbeResult::NotForUs; }
+    (parse_pdu_enveloppe_version(i) == Some(2)).into()
 }

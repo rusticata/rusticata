@@ -1,4 +1,4 @@
-use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+use crate::rparser::*;
 use crate::snmp::parse_pdu_enveloppe_version;
 use crate::{gen_get_variants, Variant};
 use snmp_parser::{parse_snmp_v3, SecurityModel};
@@ -6,7 +6,7 @@ use snmp_parser::{parse_snmp_v3, SecurityModel};
 pub struct SNMPv3Builder {}
 impl RBuilder for SNMPv3Builder {
     fn build(&self) -> Box<dyn RParser> { Box::new(SNMPv3Parser::new(b"SNMPv3")) }
-    fn probe(&self, i:&[u8]) -> bool { snmpv3_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(snmpv3_probe) }
 }
 
 pub struct SNMPv3Parser<'a> {
@@ -57,10 +57,10 @@ impl<'a> RParser for SNMPv3Parser<'a> {
     }
 }
 
-pub fn snmpv3_probe(i: &[u8]) -> bool {
-    if i.len() <= 2 { return false; }
+pub fn snmpv3_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 2 { return ProbeResult::NotForUs; }
     match parse_pdu_enveloppe_version(i) {
-        Some(3)   => true,
-        _         => false,
+        Some(3)   => ProbeResult::Certain,
+        _         => ProbeResult::NotForUs,
     }
 }

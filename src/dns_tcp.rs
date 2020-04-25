@@ -1,5 +1,5 @@
 use crate::dns_udp::{dns_probe_udp, DnsUDPParser};
-use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL};
+use crate::rparser::*;
 use nom::error::ErrorKind;
 use nom::number::streaming::be_u16;
 
@@ -8,8 +8,8 @@ impl RBuilder for DnsTCPBuilder {
     fn build(&self) -> Box<dyn RParser> {
         Box::new(DnsTCPParser::new(b"DNS/TCP"))
     }
-    fn probe(&self, i: &[u8]) -> bool {
-        dns_probe_tcp(i)
+    fn get_l4_probe(&self) -> Option<ProbeL4> {
+        Some(dns_probe_tcp)
     }
 }
 
@@ -41,22 +41,22 @@ impl<'a> RParser for DnsTCPParser<'a> {
     }
 }
 
-pub fn dns_probe_tcp(i: &[u8]) -> bool {
+pub fn dns_probe_tcp(i: &[u8], l4info: &L4Info) -> ProbeResult {
     if i.len() <= 14 {
-        return false;
+        return ProbeResult::Unsure;
     }
     match be_u16::<(&[u8],ErrorKind)>(i) {
         Ok((rem, record_len)) => {
             if record_len < rem.len() as u16 {
-                return false;
+                return ProbeResult::NotForUs;
             }
             if record_len > rem.len() as u16 {
-                return false;
+                return ProbeResult::NotForUs;
             }
-            dns_probe_udp(rem)
+            dns_probe_udp(rem, l4info)
         }
         _ => {
-            false
+            ProbeResult::NotForUs
         }
     }
 }

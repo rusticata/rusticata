@@ -1,11 +1,11 @@
-use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL, R_STATUS_OK};
+use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
 use dns_parser::Packet;
 
 pub struct DnsUDPBuilder {}
 impl RBuilder for DnsUDPBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(DnsUDPParser::new(b"DNS/UDP")) }
-    fn probe(&self, i:&[u8]) -> bool { dns_probe_udp(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(dns_probe_udp) }
 }
 
 pub struct DnsUDPParser<'a> {
@@ -57,6 +57,6 @@ impl<'a> RParser for DnsUDPParser<'a> {
     }
 }
 
-pub fn dns_probe_udp(i: &[u8]) -> bool {
-    Packet::parse(i).is_ok()
+pub fn dns_probe_udp(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    Packet::parse(i).is_ok().into()
 }

@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 /// Return value from protocol probe trying to identify a protocol.
+#[derive(Debug, Eq, PartialEq)]
 pub enum ProbeResult {
     /// The format was recognized with great probability
     Certain,
@@ -13,6 +14,23 @@ pub enum ProbeResult {
     NotForUs,
     /// An error occurred in the format probe (fatal)
     Fatal,
+}
+
+impl From<bool> for ProbeResult {
+    fn from(b: bool) -> ProbeResult {
+        if b {
+            ProbeResult::Certain
+        } else {
+            ProbeResult::NotForUs
+        }
+    }
+}
+
+impl ProbeResult {
+    #[inline]
+    pub fn is_certain(&self) -> bool {
+        *self == ProbeResult::Certain || *self == ProbeResult::Reverse
+    }
 }
 
 pub struct L3Info {
@@ -28,9 +46,9 @@ pub struct L4Info {
 }
 
 /// Stateless probe for Layer 3 protocol identification
-pub type ProbeL3 = fn (&[u8], &L3Info) -> ProbeResult;
+pub type ProbeL3 = fn(&[u8], &L3Info) -> ProbeResult;
 /// Stateless probe for Layer 4 protocol identification
-pub type ProbeL4 = fn (&[u8], &L3Info, &L4Info) -> ProbeResult;
+pub type ProbeL4 = fn(&[u8], &L4Info) -> ProbeResult;
 
 /// Stateful probe for Layer 3 protocol identification
 pub trait StateProbeL3 {

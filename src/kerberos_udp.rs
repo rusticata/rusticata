@@ -7,7 +7,7 @@ use kerberos_parser::krb5::{EncryptionType, ErrorCode, PAType, PrincipalName, Re
 pub struct KerberosUDPBuilder {}
 impl RBuilder for KerberosUDPBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(KerberosParserUDP::new(b"Kerberos/UDP")) }
-    fn probe(&self, i:&[u8]) -> bool { kerberos_probe_udp(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(kerberos_probe_udp) }
 }
 
 #[derive(Default)]
@@ -206,26 +206,30 @@ pub fn test_weak_crypto(alg:EncryptionType) -> bool {
     }
 }
 
-pub fn kerberos_probe_udp(i: &[u8]) -> bool {
-    if i.len() <= 10 { return false; }
+pub fn kerberos_probe_udp(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() < 10 {
+        return ProbeResult::Unsure;
+    }
     match der_read_element_header(i) {
         Ok((rem,hdr)) => {
             // Kerberos messages start with an APPLICATION header
-            if hdr.class != 0b01 { return false; }
+            if hdr.class != 0b01 { return ProbeResult::NotForUs; }
             // Tag number should be <= 30
-            if hdr.tag.0 >= 30 { return false; }
+            if hdr.tag.0 >= 30 { return ProbeResult::NotForUs; }
             // Kerberos messages contain sequences
-            if rem.is_empty() || rem[0] != 0x30 { return false; }
+            if rem.is_empty() || rem[0] != 0x30 { return ProbeResult::NotForUs; }
             // Check kerberos version
             // debug!("hdr: {:?}", hdr);
             if let Ok((rem,_hdr)) = der_read_element_header(rem) {
                 if rem.len() > 5 {
                     // Encoding of DER integer 5 (version)
-                    return rem[2..5] == [2,1,5];
+                    if rem[2..5] == [2,1,5] {
+                        return ProbeResult::Certain;
+                    }
                 }
             }
-            false
+            ProbeResult::NotForUs
         },
-        _ => false,
+        _ => ProbeResult::NotForUs,
     }
 }

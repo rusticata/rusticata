@@ -1,4 +1,4 @@
-use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL, R_STATUS_OK};
+use crate::rparser::*;
 use crate::ipsec::{IPsecParser, ipsec_probe};
 use nom::error::ErrorKind;
 use nom::number::streaming::be_u32;
@@ -6,7 +6,7 @@ use nom::number::streaming::be_u32;
 pub struct IPsecNatTBuilder {}
 impl RBuilder for IPsecNatTBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(IPsecNatTParser::new(b"IKEv2-NatT")) }
-    fn probe(&self, i:&[u8]) -> bool { ipsec_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(ikev2_natt_probe) }
 }
 
 pub struct IPsecNatTParser<'a> {
@@ -38,12 +38,12 @@ impl<'a> RParser for IPsecNatTParser<'a> {
     }
 }
 
-pub fn ikev2_natt_probe(i: &[u8]) -> bool {
-    if i.len() <= 20 { return false; }
+pub fn ikev2_natt_probe(i: &[u8], l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 20 { return ProbeResult::Unsure; }
     match be_u32::<(&[u8],ErrorKind)>(i) {
         Ok((rem,mark)) if mark == 0 => {
-            ipsec_probe(rem)
+            ipsec_probe(rem, l4info)
         }
-        _ => false,
+        _ => ProbeResult::NotForUs,
     }
 }

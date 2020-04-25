@@ -1,4 +1,4 @@
-use crate::rparser::{RBuilder, RParser, R_STATUS_FAIL, R_STATUS_OK};
+use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
 use dhcp4r::{
     options::DhcpOption,
@@ -9,7 +9,7 @@ use std::net::Ipv4Addr;
 pub struct DHCPBuilder {}
 impl RBuilder for DHCPBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(DHCPParser::new(b"DHCP")) }
-    fn probe(&self, i:&[u8]) -> bool { dhcp_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(dhcp_probe) }
 }
 
 #[derive(Default)]
@@ -73,6 +73,6 @@ impl<'a> RParser for DHCPParser<'a> {
     }
 }
 
-pub fn dhcp_probe(i: &[u8]) -> bool {
-    Packet::from(i).is_ok()
+pub fn dhcp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    Packet::from(i).is_ok().into()
 }

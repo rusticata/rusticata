@@ -1,11 +1,11 @@
-use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+use crate::rparser::*;
 use crate::tls::TlsParser;
 use openvpn_parser::{parse_openvpn_tcp,Payload,Opcode};
 
 pub struct OpenVPNTCPBuilder {}
 impl RBuilder for OpenVPNTCPBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(OpenVPNTCPParser::new(b"OpenVPN/TCP")) }
-    fn probe(&self, i:&[u8]) -> bool { openvpn_tcp_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(openvpn_tcp_probe) }
 }
 
 pub struct OpenVPNTCPParser<'a> {
@@ -58,8 +58,8 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
     }
 }
 
-pub fn openvpn_tcp_probe(i: &[u8]) -> bool {
-    if i.len() <= 20 { return false; }
+pub fn openvpn_tcp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 20 { return ProbeResult::Unsure; }
     // XXX
     match parse_openvpn_tcp(i) {
         Ok((rem,pkt)) => {
@@ -74,6 +74,6 @@ pub fn openvpn_tcp_probe(i: &[u8]) -> bool {
             }
         },
         _ => false,
-    }
+    }.into()
 }
 

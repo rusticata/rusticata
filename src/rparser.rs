@@ -1,6 +1,7 @@
 //! common functions for all parsers
 
 use crate::Variant;
+pub use crate::probe::{L3Info, L4Info, ProbeL4, ProbeResult};
 
 /// Interface of all Rusticata parsers.
 ///
@@ -42,7 +43,7 @@ pub trait RParser : Send + Sync {
 pub trait RBuilder : Send + Sync {
     fn build(&self) -> Box<dyn RParser>;
 
-    fn probe(&self, data:&[u8]) -> bool;
+   fn get_l4_probe(&self) -> Option<ProbeL4> { None }
 }
 
 // status: return code, events

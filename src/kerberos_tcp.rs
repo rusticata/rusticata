@@ -1,5 +1,6 @@
+use crate::kerberos_udp::{kerberos_probe_udp, KerberosParserUDP};
+use crate::probe::*;
 use crate::rparser::*;
-use crate::kerberos_udp::{KerberosParserUDP,kerberos_probe_udp};
 use crate::Variant;
 use nom::error::ErrorKind;
 use nom::number::streaming::be_u32;
@@ -7,7 +8,7 @@ use nom::number::streaming::be_u32;
 pub struct KerberosTCPBuilder {}
 impl RBuilder for KerberosTCPBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(KerberosParserTCP::new(b"Kerberos/TCP")) }
-    fn probe(&self, i:&[u8]) -> bool { kerberos_probe_tcp(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(kerberos_probe_tcp) }
 }
 
 pub struct KerberosParserTCP<'a> {
@@ -91,16 +92,17 @@ impl<'a> KerberosParserTCP<'a> {
     }
 }
 
-pub fn kerberos_probe_tcp(i: &[u8]) -> bool {
-    if i.len() <= 14 { return false; }
+pub fn kerberos_probe_tcp(i: &[u8], l4info: &L4Info) -> ProbeResult {
+    if i.len() < 14 {
+        return ProbeResult::Unsure;
+    }
     match be_u32::<(&[u8],ErrorKind)>(i) {
         Ok((rem, record_mark)) => {
-            if record_mark != rem.len() as u32 { return false; }
-            kerberos_probe_udp(rem)
+            if record_mark < rem.len() as u32 { return ProbeResult::NotForUs; }
+            kerberos_probe_udp(rem, l4info)
         },
         _ => {
-            false
+            ProbeResult::NotForUs
         },
     }
 }
-

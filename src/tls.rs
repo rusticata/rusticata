@@ -1,7 +1,7 @@
 //! TLS parser
 //!
 //! The TLS parser is based on the `tls-parser` crate to parse the handshake phase
-//! of a TLS connection. It stores the selected parameters (like the negociated ciphersuite,
+//! of a TLS connection. It stores the selected parameters (like the negotiated ciphersuite,
 //! compression method, etc.) in the parser state.
 //!
 //! It handles defragmentation (TCP chunks, or TLS record and messages fragmentation), and
@@ -32,7 +32,7 @@ use tls_parser::tls_states::{TlsState,tls_state_transition};
 pub struct TLSBuilder {}
 impl RBuilder for TLSBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(TlsParser::new(b"TLS")) }
-    fn probe(&self, i:&[u8]) -> bool { tls_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(tls_probe) }
 }
 
 impl<'a> From<TlsVersion> for Variant<'a> {
@@ -480,14 +480,14 @@ impl<'a> RParser for TlsParser<'a> {
     }
 }
 
-pub fn tls_probe(i: &[u8]) -> bool {
-    if i.len() <= 2 { return false; }
+pub fn tls_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 2 { return ProbeResult::Unsure; }
     // first byte is record type (between 0x14 and 0x17, 0x16 is handhake)
     // second is TLS version major (0x3)
     // third is TLS version minor (0x0 for SSLv3, 0x1 for TLSv1.0, etc.)
     match (i[0],i[1],i[2]) {
-        (0x14..=0x17,0x03,0..=3) => true,
-        _ => false,
+        (0x14..=0x17,0x03,0..=3) => ProbeResult::Certain,
+        _ => ProbeResult::NotForUs,
     }
 }
 

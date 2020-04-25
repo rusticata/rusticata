@@ -12,7 +12,7 @@ impl<'a> From<IkeTransformDHType> for Variant<'a> {
 pub struct IPsecBuilder {}
 impl RBuilder for IPsecBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(IPsecParser::new(b"IKEv2")) }
-    fn probe(&self, i:&[u8]) -> bool { ipsec_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(ipsec_probe) }
 }
 
 pub struct IPsecParser<'a> {
@@ -263,22 +263,22 @@ impl<'a> IPsecParser<'a> {
     }
 }
 
-pub fn ipsec_probe(i: &[u8]) -> bool {
-    if i.len() <= 20 { return false; }
+pub fn ipsec_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 20 { return ProbeResult::Unsure; }
     match parse_ikev2_header(i) {
         Ok((_,ref hdr)) => {
             if hdr.maj_ver != 2 || hdr.min_ver != 0 {
                 debug!("ipsec_probe: could be ipsec, but with unsupported/invalid version {}.{}",
                       hdr.maj_ver, hdr.min_ver);
-                return false;
+                return ProbeResult::NotForUs;
             }
             if hdr.exch_type.0 < 34 || hdr.exch_type.0 > 37 {
                 debug!("ipsec_probe: could be ipsec, but with unsupported/invalid exchange type {}",
                       hdr.exch_type.0);
-                return false;
+                return ProbeResult::NotForUs;
             }
-            true
+            ProbeResult::Certain
         }
-        _ => false,
+        _ => ProbeResult::NotForUs,
     }
 }

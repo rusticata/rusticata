@@ -1,10 +1,10 @@
-use crate::rparser::{RBuilder,RParser,R_STATUS_OK,R_STATUS_FAIL};
+use crate::rparser::*;
 use radius_parser::parse_radius_data;
 
 pub struct RadiusBuilder {}
 impl RBuilder for RadiusBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(RadiusParser::new(b"Radius")) }
-    fn probe(&self, i:&[u8]) -> bool { radius_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(radius_probe) }
 }
 
 pub struct RadiusParser<'a> {
@@ -35,9 +35,9 @@ impl<'a> RParser for RadiusParser<'a> {
     }
 }
 
-#[allow(dead_code)]
-pub fn radius_probe(i: &[u8]) -> bool {
-    if i.len() <= 2 { return false; }
-    parse_radius_data(i).is_ok()
+// #[allow(dead_code)]
+pub fn radius_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 2 { return ProbeResult::NotForUs; }
+    parse_radius_data(i).is_ok().into()
 }
 

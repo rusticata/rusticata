@@ -1,11 +1,10 @@
 use crate::rparser::*;
-
 use ntp_parser::*;
 
 pub struct NTPBuilder {}
 impl RBuilder for NTPBuilder {
     fn build(&self) -> Box<dyn RParser> { Box::new(NtpParser::new(b"NTP")) }
-    fn probe(&self, i:&[u8]) -> bool { ntp_probe(i) }
+    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(ntp_probe) }
 }
 
 pub struct NtpParser<'a> {
@@ -35,12 +34,12 @@ impl<'a> NtpParser<'a> {
     }
 }
 
-pub fn ntp_probe(i: &[u8]) -> bool {
-    if i.len() <= 2 { return false; }
+pub fn ntp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+    if i.len() <= 2 { return ProbeResult::Unsure; }
     match parse_ntp(i) {
         Ok((_,ref msg)) => {
-            msg.version == 3 || msg.version == 4
+            (msg.version == 3 || msg.version == 4).into()
         },
-        _ => false,
+        _ => ProbeResult::NotForUs,
     }
 }
