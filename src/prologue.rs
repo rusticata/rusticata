@@ -8,6 +8,7 @@ pub use crate::kerberos_udp::*;
 pub use crate::ntp::*;
 pub use crate::openvpn::*;
 pub use crate::openvpn_udp::*;
+pub use crate::probe::*;
 pub use crate::radius::*;
 pub use crate::rparser::*;
 pub use crate::snmp::*;
