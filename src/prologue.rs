@@ -1,6 +1,7 @@
 pub use crate::dhcp::*;
 pub use crate::dns_tcp::*;
 pub use crate::dns_udp::*;
+pub use crate::http::*;
 pub use crate::ipsec::*;
 pub use crate::ipsec_natt::*;
 pub use crate::kerberos_tcp::*;
