@@ -26,6 +26,7 @@ pub struct HTTPParser<'a> {
     // response
     pub code: Option<u16>,
     pub content_length: Option<usize>,
+    pub content_type: Option<String>,
     pub body: Vec<u8>,
 }
 
@@ -39,6 +40,7 @@ impl<'a> HTTPParser<'a> {
 }
 
 impl<'a> RParser for HTTPParser<'a> {
+    #[allow(clippy::cognitive_complexity)]
     fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
         // apache usually sets a limit of 100 headers max
         const NUM_OF_HEADERS: usize = 20;
@@ -127,6 +129,10 @@ impl<'a> RParser for HTTPParser<'a> {
                         }
                         warn!("Invalid encoding of Content-Length header");
                     }
+                    "content-type" => {
+                        let s = String::from_utf8_lossy(hdr.value).into_owned();
+                        self.content_type = Some(s);
+                    }
                     _ => (),
                 }
             }
@@ -143,6 +149,7 @@ impl<'a> RParser for HTTPParser<'a> {
         cookie         => map_as_ref,
         code           => map,
         content_length => map,
+        content_type   => map_as_ref,
     }
 }
 
