@@ -1,6 +1,7 @@
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
 use httparse::{Request, Response, EMPTY_HEADER};
+use std::cmp::Ordering;
 
 pub struct HTTPBuilder {}
 impl RBuilder for HTTPBuilder {
@@ -21,8 +22,11 @@ pub struct HTTPParser<'a> {
     pub method: Option<String>,
     pub uri: Option<String>,
     pub user_agent: Option<String>,
+    pub cookie: Option<String>,
     // response
     pub code: Option<u16>,
+    pub content_length: Option<usize>,
+    pub body: Vec<u8>,
 }
 
 impl<'a> HTTPParser<'a> {
@@ -42,8 +46,8 @@ impl<'a> RParser for HTTPParser<'a> {
         if direction == STREAM_TOSERVER {
             let mut req = Request::new(&mut headers[..]);
             let status = req.parse(i);
-            trace!("{:?}", status);
-            trace!("{:?}", req);
+            trace!("status {:?}", status);
+            trace!("request: {:?}", req);
             if let Some(version) = req.version {
                 self.version = Some(format!("HTTP/1.{}", version));
             }
@@ -54,18 +58,77 @@ impl<'a> RParser for HTTPParser<'a> {
                 self.uri = Some(uri.to_owned());
             }
             for hdr in &headers {
-                if hdr.name == "User-Agent" {
-                    let s = String::from_utf8_lossy(hdr.value).into_owned();
-                    self.user_agent = Some(s);
+                let name = hdr.name.to_lowercase();
+                match name.as_ref() {
+                    "user-agent" => {
+                        let s = String::from_utf8_lossy(hdr.value).into_owned();
+                        self.user_agent = Some(s);
+                    }
+                    "cookie" => {
+                        let s = String::from_utf8_lossy(hdr.value).into_owned();
+                        self.cookie = Some(s);
+                    },
+                    "host" => {
+                        let s = String::from_utf8_lossy(hdr.value);
+                        debug!("host: {}", s);
+                    },
+                    _ => (),
                 }
             }
         } else {
+            // check if continuation of a response
+            if let Some(sz) = self.content_length {
+                trace!("queueing data for response body");
+                self.body.extend_from_slice(i);
+                // check if finished
+                match self.body.len().cmp(&sz) {
+                    Ordering::Less =>
+                        /* not yet complete */
+                        {}
+                    Ordering::Equal => {
+                        debug!("finished");
+                    }
+                    Ordering::Greater => {
+                        warn!(
+                            "Response body {} larger than content-length {}",
+                            self.body.len(),
+                            sz
+                        );
+                    }
+                }
+                return R_STATUS_OK;
+            }
             let mut resp = Response::new(&mut headers[..]);
             let status = resp.parse(i);
-            trace!("{:?}", status);
-            trace!("{:?}", resp);
+            trace!("status: {:?}", status);
+            trace!("response headers: {:?}", resp);
             if let Some(code) = resp.code {
                 self.code = Some(code);
+            }
+            if let Ok(httparse::Status::Complete(sz)) = status {
+                self.body = i[sz..].to_vec();
+            }
+            // check for chunked encoding (Transfer-Encoding: Chunked)
+            //     if yes, see https://en.wikipedia.org/wiki/Chunked_transfer_encoding
+            // check if we have a Content-Length
+            for hdr in &headers {
+                let name = hdr.name.to_lowercase();
+                match name.as_ref() {
+                    "content-length" => {
+                        if let Ok(s) = std::str::from_utf8(hdr.value) {
+                            if let Ok(length) = str::parse::<usize>(s) {
+                                debug!("Content-Length: {}", length);
+                                self.content_length = Some(length);
+                                if length > self.body.len() {
+                                    debug!("expecting more bytes");
+                                }
+                                continue;
+                            }
+                        }
+                        warn!("Invalid encoding of Content-Length header");
+                    }
+                    _ => (),
+                }
             }
         }
         R_STATUS_OK
@@ -73,11 +136,13 @@ impl<'a> RParser for HTTPParser<'a> {
 
     gen_get_variants! {HTTPParser, "http.",
         // version     => |s| Some(Variant::from(&s.version)),
-        version    => map_as_ref,
-        method     => map_as_ref,
-        uri        => map_as_ref,
-        user_agent => map_as_ref,
-        code       => map,
+        version        => map_as_ref,
+        method         => map_as_ref,
+        uri            => map_as_ref,
+        user_agent     => map_as_ref,
+        cookie         => map_as_ref,
+        code           => map,
+        content_length => map,
     }
 }
 
