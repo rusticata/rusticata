@@ -12,6 +12,7 @@ impl RBuilder for HTTPBuilder {
     }
 }
 
+#[derive(Default)]
 pub struct HTTPParser<'a> {
     _name: Option<&'a [u8]>,
 
@@ -19,6 +20,7 @@ pub struct HTTPParser<'a> {
     pub version: Option<String>,
     pub method: Option<String>,
     pub uri: Option<String>,
+    pub user_agent: Option<String>,
     // response
     pub code: Option<u16>,
 }
@@ -27,10 +29,7 @@ impl<'a> HTTPParser<'a> {
     pub fn new(name: &'a [u8]) -> Self {
         HTTPParser {
             _name: Some(name),
-            version: None,
-            method: None,
-            uri: None,
-            code: None,
+            ..HTTPParser::default()
         }
     }
 }
@@ -54,6 +53,12 @@ impl<'a> RParser for HTTPParser<'a> {
             if let Some(uri) = req.path {
                 self.uri = Some(uri.to_owned());
             }
+            for hdr in &headers {
+                if hdr.name == "User-Agent" {
+                    let s = String::from_utf8_lossy(hdr.value).into_owned();
+                    self.user_agent = Some(s);
+                }
+            }
         } else {
             let mut resp = Response::new(&mut headers[..]);
             let status = resp.parse(i);
@@ -68,10 +73,11 @@ impl<'a> RParser for HTTPParser<'a> {
 
     gen_get_variants! {HTTPParser, "http.",
         // version     => |s| Some(Variant::from(&s.version)),
-        version => map_as_ref,
-        method  => map_as_ref,
-        uri     => map_as_ref,
-        code    => map,
+        version    => map_as_ref,
+        method     => map_as_ref,
+        uri        => map_as_ref,
+        user_agent => map_as_ref,
+        code       => map,
     }
 }
 
