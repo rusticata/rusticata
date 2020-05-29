@@ -25,21 +25,9 @@ Use `cargo install` to install the library, or set the `LD_LIBRARY_PATH` environ
 
 ## Testing
 
-You need the [pcap-parse](https://github.com/rusticata/pcap-parse) tool.
-
-```
-git clone https://github.com/rusticata/pcap-parse.git
-cd pcap-parse
-```
-
-Use `cargo build` to build the tool.
-
-## Debug
-`pcap-parse` uses the `RUST_LOG` environment variable to configure its output verbosity.
-```
-RUST_LOG=rusticata=Debug cargo run -- -p tls -f file.pcapng
-```
-
+`rusticata` is mostly used to decode application layers in the
+[pcap-analyzer](https://github.com/rusticata/pcap-analyzer) project.
+See its documentation for examples.
 
 ## License
 
