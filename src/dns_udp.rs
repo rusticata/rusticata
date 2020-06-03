@@ -27,8 +27,8 @@ impl<'a> DnsUDPParser<'a> {
 }
 
 impl<'a> RParser for DnsUDPParser<'a> {
-    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
-        match Packet::parse(i) {
+    fn parse_l4(&mut self, data: &[u8], _direction: Direction) -> ParseResult {
+        match Packet::parse(data) {
             Ok(pkt) => {
                 if pkt.header.query {
                     debug!("DNS query");
@@ -45,9 +45,9 @@ impl<'a> RParser for DnsUDPParser<'a> {
                     }
                 }
                 // debug!("pkt: {:?}", pkt);
-                R_STATUS_OK
+                ParseResult::Ok
             }
-            _ => R_STATUS_FAIL
+            _ => ParseResult::Error
         }
     }
 

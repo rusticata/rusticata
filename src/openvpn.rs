@@ -27,8 +27,8 @@ impl<'a> OpenVPNTCPParser<'a> {
 
 
 impl<'a> RParser for OpenVPNTCPParser<'a> {
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
-        let mut cur_i = i;
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
+        let mut cur_i = data;
         loop {
             match parse_openvpn_tcp(cur_i) {
                 Ok((rem,r)) => {
@@ -44,7 +44,7 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
                 e => {
                     warn!("parse_openvpn_tcp failed: {:?}", e);
                     // warn!("input buffer:\n{}",i.to_hex(16));
-                    return R_STATUS_FAIL;
+                    return ParseResult::Error;
                 },
             }
         }
@@ -54,7 +54,7 @@ impl<'a> RParser for OpenVPNTCPParser<'a> {
             self.tls_parser.parse_tcp_level(&self.defrag_buf, direction);
             self.defrag_buf.clear();
         }
-        R_STATUS_OK
+        ParseResult::Ok
     }
 }
 

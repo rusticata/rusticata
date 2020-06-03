@@ -32,8 +32,8 @@ impl<'a> DHCPParser<'a> {
 }
 
 impl<'a> RParser for DHCPParser<'a> {
-    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
-        match Packet::from(i) {
+    fn parse_l4(&mut self, data: &[u8], _direction: Direction) -> ParseResult {
+        match Packet::from(data) {
             Ok(pkt) => {
                 // debug!("pkt: {:?}", pkt);
                 self.reply = pkt.reply;
@@ -55,9 +55,9 @@ impl<'a> RParser for DHCPParser<'a> {
                         _ => {},
                     }
                 }
-                R_STATUS_OK
+                ParseResult::Ok
             }
-            _ => R_STATUS_FAIL
+            _ => ParseResult::Error
         }
     }
 

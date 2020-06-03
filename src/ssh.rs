@@ -63,7 +63,7 @@ impl<'a> SSHParser<'a> {
         }
     }
 
-    fn parse_ident(&mut self, i: &[u8]) -> u32 {
+    fn parse_ident(&mut self, i: &[u8]) -> ParseResult {
         match ssh::parse_ssh_identification(i) {
             Ok((rem,(ref crap, ref res))) => {
                 // In version 2.0, the SSH server is allowed to send an arbitrary number of
@@ -82,7 +82,7 @@ impl<'a> SSHParser<'a> {
                 self.state = match self.state {
                     SSHConnectionState::Start       => SSHConnectionState::CIdent,
                     SSHConnectionState::CIdent      => SSHConnectionState::SIdent,
-                    _ => { return R_STATUS_FAIL; },
+                    _ => { return ParseResult::Error; },
                 };
                 info!("protocol\n{}", res.proto.to_hex(16));
                 info!("software\n{}", res.software.to_hex(16));
@@ -92,21 +92,21 @@ impl<'a> SSHParser<'a> {
                 self.state = SSHConnectionState::Error;
             },
         };
-        R_STATUS_OK
+        ParseResult::Ok
     }
 
-    fn parse_packet(&mut self, i: &[u8], direction:u8) -> u32 {
-        debug!("parse_ssh_packet direction: {}", direction);
+    fn parse_packet(&mut self, i: &[u8], direction: Direction) -> ParseResult {
+        debug!("parse_ssh_packet direction: {:?}", direction);
         debug!("\tbuffer_clt size: {}", self.buffer_clt.len());
         debug!("\tbuffer_srv size: {}", self.buffer_srv.len());
         if self.state == SSHConnectionState::Established {
             // stop following session when encrypted
-            return R_STATUS_OK;
+            return ParseResult::Ok;
         }
         let mut v : Vec<u8>;
         // Check if a record is being defragmented
         let self_buffer =
-            if direction == STREAM_TOSERVER { &mut self.buffer_srv }
+            if direction == Direction::ToServer { &mut self.buffer_srv }
             else { &mut self.buffer_clt };
         let buf = match self_buffer.len() {
             0 => i,
@@ -129,7 +129,7 @@ impl<'a> SSHParser<'a> {
                     SSHConnectionState::SKexInit      => SSHConnectionState::CKexDH,
                     SSHConnectionState::CKexDH        => SSHConnectionState::SKexDH,
                     SSHConnectionState::SKexDH        => SSHConnectionState::Established,
-                    _ => { return R_STATUS_FAIL; },
+                    _ => { return ParseResult::Error; },
                 };
             },
             Err(Err::Incomplete(_e)) => {
@@ -142,24 +142,24 @@ impl<'a> SSHParser<'a> {
             },
         };
         // info!("after parsing:\n{}", self_buffer.to_hex(16));
-        R_STATUS_OK
+        ParseResult::Ok
     }
 }
 
 
 impl<'a> RParser for SSHParser<'a> {
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
         debug!("SSH current state: {:?}", self.state);
         match self.state {
             SSHConnectionState::Start |
-            SSHConnectionState::CIdent       => self.parse_ident(i),
+            SSHConnectionState::CIdent       => self.parse_ident(data),
             SSHConnectionState::SIdent |
             SSHConnectionState::CKexInit |
             SSHConnectionState::SKexInit |
             SSHConnectionState::CKexDH |
             SSHConnectionState::SKexDH |
-            SSHConnectionState::Established  => self.parse_packet(i,direction),
-            SSHConnectionState::Error        => R_STATUS_FAIL,
+            SSHConnectionState::Established  => self.parse_packet(data, direction),
+            SSHConnectionState::Error        => ParseResult::Error,
             // _            => R_STATUS_FAIL,
         }
     }

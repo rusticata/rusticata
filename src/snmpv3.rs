@@ -34,18 +34,18 @@ impl<'a> SNMPv3Parser<'a> {
 }
 
 impl<'a> RParser for SNMPv3Parser<'a> {
-    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
-        match parse_snmp_v3(i) {
+    fn parse_l4(&mut self, data: &[u8], _direction: Direction) -> ParseResult {
+        match parse_snmp_v3(data) {
             Ok((_rem,r)) => {
                 debug!("parse_snmp_v3: {:?}", r);
                 self.version = r.version as u8;
                 self.req_flags = r.header_data.msg_flags;
                 self.security_model = r.header_data.msg_security_model;
-                R_STATUS_OK
+                ParseResult::Ok
             },
             e => {
                 warn!("parse_snmp_v3 failed: {:?}", e);
-                R_STATUS_FAIL
+                ParseResult::Error
             },
         }
     }

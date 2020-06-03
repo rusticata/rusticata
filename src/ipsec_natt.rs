@@ -24,15 +24,15 @@ impl<'a> IPsecNatTParser<'a> {
 }
 
 impl<'a> RParser for IPsecNatTParser<'a> {
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
-        match be_u32::<(&[u8],ErrorKind)>(i) {
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
+        match be_u32::<(&[u8],ErrorKind)>(data) {
             Ok((rem,mark)) => {
-                if mark != 0 { return R_STATUS_OK; }
-                self.parser.parse(rem, direction)
+                if mark != 0 { return ParseResult::Ok; }
+                self.parser.parse_l4(rem, direction)
             },
             _ => {
                 warn!("ikev2-natt: reading record mark failed!");
-                R_STATUS_FAIL
+                ParseResult::Error
             }
         }
     }

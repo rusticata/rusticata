@@ -22,22 +22,22 @@ pub struct KerberosParserTCP<'a> {
 }
 
 impl<'a> RParser for KerberosParserTCP<'a> {
-    fn parse(&mut self, buf: &[u8], direction: u8) -> u32 {
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
         // handle tcp buffering
         // XXX we use only one buffer for both sides
         let mut v : Vec<u8>;
-        let mut status = R_STATUS_OK;
+        let mut status = ParseResult::Ok;
         let tcp_buffer = match self.record_ts {
-            0 => buf,
+            0 => data,
             _ => {
                 // sanity check to avoid memory exhaustion
-                if self.defrag_buf_ts.len() + buf.len() > 100_000 {
+                if self.defrag_buf_ts.len() + data.len() > 100_000 {
                     warn!("krb5_parse_tcp: TCP buffer exploded {} {}",
-                                self.defrag_buf_ts.len(), buf.len());
-                    return R_STATUS_FAIL;
+                                self.defrag_buf_ts.len(), data.len());
+                    return ParseResult::Error;
                 }
                 v = self.defrag_buf_ts.split_off(0);
-                v.extend_from_slice(buf);
+                v.extend_from_slice(data);
                 v.as_slice()
             }
         };
@@ -51,18 +51,21 @@ impl<'a> RParser for KerberosParserTCP<'a> {
                     },
                     _ => {
                         warn!("krb5_parse_tcp: reading record mark failed!");
-                        return R_STATUS_FAIL;
+                        return ParseResult::Error;
                     }
                 }
             }
             if cur_i.len() >= self.record_ts {
-                status |= self.parser.parse(cur_i, direction);
+                status = self.parser.parse_l4(cur_i, direction);
+                if status != ParseResult::Ok {
+                    return status;
+                }
                 cur_i = &cur_i[self.record_ts..];
                 self.record_ts = 0;
             } else {
                 debug!("KerberosParserTCP: more fragments required have {}, need {}", cur_i.len(), self.record_ts);
                 self.defrag_buf_ts.extend_from_slice(cur_i);
-                return R_STATUS_OK;
+                return ParseResult::Ok;
             }
         }
         status

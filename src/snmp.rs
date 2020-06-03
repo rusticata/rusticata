@@ -41,24 +41,24 @@ impl<'a> SNMPParser<'a> {
 
 
 impl<'a> RParser for SNMPParser<'a> {
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
         let parser = match self.version {
             1 => parse_snmp_v1,
             2 => parse_snmp_v2c,
-            _ => return R_STATUS_FAIL,
+            _ => return ParseResult::Error,
         };
-        match parser(i) {
+        match parser(data) {
             Ok((_rem,r)) => {
                 debug!("parse_snmp({}): {:?}", self.version, r);
                 self.community = Some(r.community);
-                if direction == STREAM_TOSERVER {
+                if direction == Direction::ToServer {
                     self.req_type = Some(r.pdu.pdu_type());
                 }
-                R_STATUS_OK
+                ParseResult::Ok
             },
             e => {
                 warn!("parse_snmp({}) failed: {:?}", self.version, e);
-                R_STATUS_FAIL
+                ParseResult::Error
             },
         }
     }

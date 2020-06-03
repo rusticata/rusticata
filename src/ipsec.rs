@@ -29,12 +29,12 @@ pub struct IPsecParser<'a> {
 }
 
 impl<'a> RParser for IPsecParser<'a> {
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
-        match parse_ikev2_header(i) {
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
+        match parse_ikev2_header(data) {
             Ok((rem,ref hdr)) => {
                 debug!("parse_ikev2_header: {:?}",hdr);
                 if rem.is_empty() && hdr.length == 28 {
-                    return R_STATUS_OK;
+                    return ParseResult::Ok;
                 }
                 // Rule 0: check version
                 if hdr.maj_ver != 2 || hdr.min_ver != 0 {
@@ -51,7 +51,7 @@ impl<'a> RParser for IPsecParser<'a> {
                                 },
                                 IkeV2PayloadContent::KE(ref kex) => {
                                     debug!("KEX {:?}", kex.dh_group);
-                                    if direction == STREAM_TOCLIENT {
+                                    if direction == Direction::ToClient {
                                         self.dh_group = kex.dh_group;
                                     }
                                 },
@@ -72,7 +72,7 @@ impl<'a> RParser for IPsecParser<'a> {
             },
             e => warn!("parse_ikev2_header: {:?}",e),
         };
-        R_STATUS_OK
+        ParseResult::Ok
     }
 
     gen_get_variants!{IPsecParser, "ikev2.",

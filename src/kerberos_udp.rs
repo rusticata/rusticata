@@ -47,16 +47,16 @@ pub fn to_hex_string(bytes: &[u8]) -> String {
 
 impl<'a> RParser for KerberosParserUDP<'a> {
     #[allow(clippy::cognitive_complexity)]
-    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
-        match der_read_element_header(i) {
+    fn parse_l4(&mut self, data: &[u8], _direction: Direction) -> ParseResult {
+        match der_read_element_header(data) {
             Ok((_rem,hdr)) => {
                 // Kerberos messages start with an APPLICATION header
-                if hdr.class != 0b01 { return 1; }
+                if hdr.class != 0b01 { return ParseResult::Error; }
                 debug!("hdr: {:?}", hdr);
                 match hdr.tag.0 {
                     10 => {
                         self.req_type = hdr.tag.0;
-                        let res = krb5_parser::parse_as_req(i);
+                        let res = krb5_parser::parse_as_req(data);
                         debug!("AS-REQ: {:?}", res);
                         if let Ok((_,kdc_req)) = res {
                             debug!("AS-REQ cname: {:?}", kdc_req.req_body.cname);
@@ -73,7 +73,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     },
                     11 => {
                         self.rep_type = hdr.tag.0;
-                        let res = krb5_parser::parse_as_rep(i);
+                        let res = krb5_parser::parse_as_rep(data);
                         debug!("AS-REP: {:?}", res);
                         if let Ok((_,kdc_rep)) = res {
                             debug!("AS-REP cname: {:?}", kdc_rep.cname);
@@ -93,7 +93,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     },
                     12 => {
                         self.req_type = hdr.tag.0;
-                        let res = krb5_parser::parse_tgs_req(i);
+                        let res = krb5_parser::parse_tgs_req(data);
                         debug!("TGS-REQ: {:?}", res);
                         if let Ok((_,kdc_req)) = res {
                             debug!("TGS-REQ cname: {:?}", kdc_req.req_body.cname);
@@ -122,7 +122,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     },
                     13 => {
                         self.rep_type = hdr.tag.0;
-                        let res = krb5_parser::parse_tgs_rep(i);
+                        let res = krb5_parser::parse_tgs_rep(data);
                         debug!("TGS-REP: {:?}", res);
                         if let Ok((_,kdc_rep)) = res {
                             debug!("TGS-REP cname: {:?}", kdc_rep.cname);
@@ -138,7 +138,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     },
                     14 => {
                         self.req_type = hdr.tag.0;
-                        let res = krb5_parser::parse_ap_req(i);
+                        let res = krb5_parser::parse_ap_req(data);
                         debug!("AP-REQ: {:?}", res);
                         if let Ok((_,ap_req)) = res {
                             debug!("AP-REQ ticket sname: {:?}", ap_req.ticket.sname);
@@ -147,12 +147,12 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     },
                     15 => {
                         self.rep_type = hdr.tag.0;
-                        let res = krb5_parser::parse_ap_rep(i);
+                        let res = krb5_parser::parse_ap_rep(data);
                         debug!("AP-REP {:?}", res);
                     },
                     30 => {
                         self.rep_type = hdr.tag.0;
-                        let res = krb5_parser::parse_krb_error(i);
+                        let res = krb5_parser::parse_krb_error(data);
                         debug!("KRB-ERROR: {:?}", res);
                         debug!("KRB-ERROR: failed request: {:?}", self.req_type);
                         if let Ok((_,error)) = res {
@@ -165,9 +165,9 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     },
                     _ => debug!("unknown/unsupported tag {}", hdr.tag),
                 }
-                R_STATUS_OK
+                ParseResult::Ok
             },
-            _ => R_STATUS_FAIL
+            _ => ParseResult::Error
         }
     }
 

@@ -12,8 +12,8 @@ pub struct NtpParser<'a> {
 }
 
 impl<'a> RParser for NtpParser<'a> {
-    fn parse(&mut self, i: &[u8], _direction: u8) -> u32 {
-        match parse_ntp(i) {
+    fn parse_l4(&mut self, data: &[u8], _direction: Direction) -> ParseResult {
+        match parse_ntp(data) {
             Ok((rem,ref res)) => {
                 debug!("parse_ntp: {:?}",res);
                 if !rem.is_empty() {
@@ -22,7 +22,7 @@ impl<'a> RParser for NtpParser<'a> {
             },
             e => warn!("parse_ntp: {:?}",e),
         };
-        R_STATUS_OK
+        ParseResult::Ok
     }
 }
 

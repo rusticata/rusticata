@@ -3,6 +3,35 @@
 use crate::Variant;
 pub use crate::probe::{L3Info, L4Info, ProbeL4, ProbeResult};
 
+/// Direction of current packet in current stream
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Direction {
+    /// Packet is sent from client to server
+    ToServer,
+    /// Packet is sent from server to client
+    ToClient,
+}
+
+/// Return value from protocol probe trying to identify a protocol.
+#[derive(Debug, Eq, PartialEq)]
+pub enum ParseResult {
+    /// No error
+    ///
+    /// Note that this does not mean that the parser has successfully extracted data, only that
+    /// there is no error
+    Ok,
+    /// Parser will not analyzer more data of this protocol
+    ///
+    /// For ex, this can be used to add stream to bypass list
+    Stop,
+    /// Content is not this protocol anymore (please do not send more data, and re-analyse current)
+    ProtocolChanged,
+    /// An error occurred (continue calling parser)
+    Error,
+    /// A fatal error occurred (never call this parser again)
+    Fatal,
+}
+
 /// Interface of all Rusticata parsers.
 ///
 /// A object implementing the RParser trait is an instance of a parser,
@@ -30,7 +59,22 @@ pub trait RParser : Send + Sync {
     ///
     /// `R_STATUS_OK` or `R_STATUS_FAIL`, possibly or'ed with
     /// `R_STATUS_EVENTS` if parsing events were raised.
-    fn parse(&mut self, data:&[u8], direction:u8) -> u32;
+    fn parse(&mut self, data:&[u8], direction:u8) -> u32{
+        let d = if direction == STREAM_TOSERVER {
+            Direction::ToServer
+        } else {
+            Direction::ToClient
+        };
+        match self.parse_l4(data, d) {
+            ParseResult::Ok => R_STATUS_OK,
+            _ => R_STATUS_FAIL,
+        }
+    }
+
+    /// Parsing function
+    ///
+    /// This function is called for every packet of a connection.
+   fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult;
 
     /// Request data from key
     fn get(&self, _key: &str) -> Option<Variant> { None }

@@ -139,20 +139,20 @@ impl<'a> TlsParser<'a> {
 
     /// Message-level TLS parsing
     #[allow(clippy::cognitive_complexity)]
-    pub fn parse_message_level(&mut self, msg: &TlsMessage, direction:u8) -> u32 {
+    pub fn parse_message_level(&mut self, msg: &TlsMessage, direction: Direction) -> ParseResult {
         trace!("parse_message_level {:?}",msg);
-        let mut status = R_STATUS_OK;
+        // let status = ParseResult::Ok;
         if self.state == TlsState::ClientChangeCipherSpec {
             // Ignore records from now on, they are encrypted
-            return status;
+            return ParseResult::Stop;
         };
         // update state machine
-        match tls_state_transition(self.state, msg, direction == STREAM_TOSERVER) {
+        match tls_state_transition(self.state, msg, direction == Direction::ToServer) {
             Ok(s)  => self.state = s,
             Err(_) => {
                 self.state = TlsState::Invalid;
                 self.events.push(TlsParserEvents::InvalidState as u32);
-                status |= R_STATUS_EVENTS;
+                // status |= R_STATUS_EVENTS;
             },
         };
         trace!("TLS new state: {:?}",self.state);
@@ -239,7 +239,7 @@ impl<'a> TlsParser<'a> {
                         debug!("extensions: {:?}", ext);
                     },
                     TlsMessageHandshake::Certificate(ref content) => {
-                        if direction == STREAM_TOSERVER {
+                        if direction == Direction::ToServer {
                             debug!("Client certificate");
                         } else {
                             debug!("Server certificate");
@@ -275,19 +275,19 @@ impl<'a> TlsParser<'a> {
                 if d.payload_len as usize > d.payload.len() {
                     warn!("Heartbeat message with incorrect length {}. Heartbleed attempt ?",d.payload.len());
                     self.events.push(TlsParserEvents::HeartbeatOverflow as u32);
-                    status |= R_STATUS_EVENTS;
+                    // status |= R_STATUS_EVENTS;
                 }
             },
             _ => (),
         }
 
-        status
+        ParseResult::Ok
     }
 
     /// Record-level TLS parsing
-    pub fn parse_record_level<'b>(&mut self, r: &TlsRawRecord<'b>, direction:u8) -> u32 {
+    pub fn parse_record_level<'b>(&mut self, r: &TlsRawRecord<'b>, direction: Direction) -> ParseResult {
         let mut v : Vec<u8>;
-        let mut status = R_STATUS_OK;
+        let mut status = ParseResult::Ok;
 
         trace!("parse_record_level {}",r.data.len());
         // trace!("{:?}",r.hdr);
@@ -298,7 +298,7 @@ impl<'a> TlsParser<'a> {
             TlsRecordType::ChangeCipherSpec => (),
             TlsRecordType::Handshake        => (),
             TlsRecordType::Alert            => (),
-            _ => return status,
+            _ => return ParseResult::Ok,
         }
 
         // Check if a record is being defragmented
@@ -310,7 +310,7 @@ impl<'a> TlsParser<'a> {
                 // maximum length may be 2^24 (handshake message)
                 if self.buffer.len() + r.data.len() > 16_777_216 {
                     self.events.push(TlsParserEvents::RecordOverflow as u32);
-                    return R_STATUS_EVENTS;
+                    return ParseResult::Error;
                 };
                 v.extend_from_slice(r.data);
                 v.as_slice()
@@ -327,12 +327,15 @@ impl<'a> TlsParser<'a> {
             Ok((rem2,ref msg_list)) => {
                 self.ssl_record_version = r.hdr.version;
                 for msg in msg_list {
-                    status |= self.parse_message_level(msg, direction);
+                    status = self.parse_message_level(msg, direction);
+                    if status != ParseResult::Ok {
+                        return status;
+                    }
                 };
                 if !rem2.is_empty() {
                     warn!("extra bytes in TLS record: {:?}",rem2);
                     self.events.push(TlsParserEvents::RecordWithExtraBytes as u32);
-                    status |= R_STATUS_EVENTS;
+                    // status |= R_STATUS_EVENTS;
                 };
             }
             Err(Err::Incomplete(needed)) => {
@@ -341,16 +344,19 @@ impl<'a> TlsParser<'a> {
                 // Record is fragmented
                 self.buffer.extend_from_slice(r.data);
             },
-           Err(e) => { warn!("parse_tls_record_with_header failed: {:?}",e); status |= R_STATUS_FAIL; },
+           Err(e) => {
+               warn!("parse_tls_record_with_header failed: {:?}",e);
+               return ParseResult::Error;
+            },
         };
 
         status
     }
 
     /// Parsing function, handling TCP chunks fragmentation
-    pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8], direction:u8) -> u32 {
+    pub fn parse_tcp_level<'b>(&mut self, i: &'b[u8], direction: Direction) -> ParseResult {
         let mut v : Vec<u8>;
-        let mut status = R_STATUS_OK;
+        let mut status = ParseResult::Ok;
         trace!("parse_tcp_level ({})",i.len());
         trace!("defrag buffer size: {}",self.tcp_buffer.len());
         // trace!("{:?}",i);
@@ -367,7 +373,7 @@ impl<'a> TlsParser<'a> {
                 // maximum length may be 2^24 (handshake message)
                 if self.tcp_buffer.len() + i.len() > 16_777_216 {
                     self.events.push(TlsParserEvents::RecordOverflow as u32);
-                    return R_STATUS_EVENTS;
+                    return ParseResult::Error;
                 };
                 v.extend_from_slice(i);
                 v.as_slice()
@@ -380,7 +386,10 @@ impl<'a> TlsParser<'a> {
                 Ok((rem, ref r)) => {
                     // trace!("rem: {:?}",rem);
                     cur_i = rem;
-                    status |= self.parse_record_level(r, direction);
+                    status = self.parse_record_level(r, direction);
+                    if status != ParseResult::Ok {
+                        return status;
+                    }
                 },
                 Err(Err::Incomplete(needed)) => {
                     trace!("Fragmentation required (TCP level)");
@@ -458,15 +467,15 @@ impl<'a> TlsParser<'a> {
 }
 
 impl<'a> RParser for TlsParser<'a> {
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
-        trace!("[TLS->parse: direction={}, len={}]",direction,i.len());
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
+        trace!("[TLS->parse: direction={:?}, len={}]",direction,data.len());
 
-        if i.is_empty() {
+        if data.is_empty() {
             // Connection closed ?
-            return R_STATUS_OK;
+            return ParseResult::Ok;
         };
 
-        self.parse_tcp_level(i, direction)
+        self.parse_tcp_level(data, direction)
     }
 
     gen_get_variants!{TlsParser, "tls.",

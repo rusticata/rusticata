@@ -28,15 +28,15 @@ impl<'a> DnsTCPParser<'a> {
 }
 
 impl<'a> RParser for DnsTCPParser<'a> {
-    fn parse(&mut self, buf: &[u8], direction: u8) -> u32 {
-        match be_u16::<(&[u8],ErrorKind)>(buf) {
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
+        match be_u16::<(&[u8],ErrorKind)>(data) {
             Ok((rem,l)) => {
                 if l > rem.len() as u16 {
-                    return R_STATUS_FAIL;
+                    return ParseResult::Error;
                 }
-                self.parser.parse(rem, direction)
+                self.parser.parse_l4(rem, direction)
             }
-            _ => R_STATUS_FAIL
+            _ => ParseResult::Error
         }
     }
 }

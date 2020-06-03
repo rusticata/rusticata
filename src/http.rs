@@ -41,13 +41,21 @@ impl<'a> HTTPParser<'a> {
 
 impl<'a> RParser for HTTPParser<'a> {
     #[allow(clippy::cognitive_complexity)]
-    fn parse(&mut self, i: &[u8], direction: u8) -> u32 {
+    fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
         // apache usually sets a limit of 100 headers max
         const NUM_OF_HEADERS: usize = 20;
         let mut headers = [EMPTY_HEADER; NUM_OF_HEADERS];
-        if direction == STREAM_TOSERVER {
+        if direction == Direction::ToServer {
+            // check if continuation of a request, or other content (tunneling ?)
+            if let Some(method) = &self.method {
+                if method == "CONNECT" {
+                    // this is another protocol, not HTTP
+                    trace!("HTTP parser: raising ProtocolChanged event after CONNECT");
+                    return ParseResult::ProtocolChanged;
+                }
+            }
             let mut req = Request::new(&mut headers[..]);
-            let status = req.parse(i);
+            let status = req.parse(data);
             trace!("status {:?}", status);
             trace!("request: {:?}", req);
             if let Some(version) = req.version {
@@ -81,7 +89,7 @@ impl<'a> RParser for HTTPParser<'a> {
             // check if continuation of a response
             if let Some(sz) = self.content_length {
                 trace!("queueing data for response body");
-                self.body.extend_from_slice(i);
+                self.body.extend_from_slice(data);
                 // check if finished
                 match self.body.len().cmp(&sz) {
                     Ordering::Less =>
@@ -98,17 +106,17 @@ impl<'a> RParser for HTTPParser<'a> {
                         );
                     }
                 }
-                return R_STATUS_OK;
+                return ParseResult::Ok;
             }
             let mut resp = Response::new(&mut headers[..]);
-            let status = resp.parse(i);
+            let status = resp.parse(data);
             trace!("status: {:?}", status);
             trace!("response headers: {:?}", resp);
             if let Some(code) = resp.code {
                 self.code = Some(code);
             }
             if let Ok(httparse::Status::Complete(sz)) = status {
-                self.body = i[sz..].to_vec();
+                self.body = data[sz..].to_vec();
             }
             // check for chunked encoding (Transfer-Encoding: Chunked)
             //     if yes, see https://en.wikipedia.org/wiki/Chunked_transfer_encoding
@@ -133,11 +141,17 @@ impl<'a> RParser for HTTPParser<'a> {
                         let s = String::from_utf8_lossy(hdr.value).into_owned();
                         self.content_type = Some(s);
                     }
+                    "transfer-encoding" => {
+                        let s = String::from_utf8_lossy(hdr.value).to_lowercase();
+                        if &s == "chunked" {
+                            warn!("HTTP chunked response, not supported");
+                        }
+                    }
                     _ => (),
                 }
             }
         }
-        R_STATUS_OK
+        ParseResult::Ok
     }
 
     gen_get_variants! {HTTPParser, "http.",
