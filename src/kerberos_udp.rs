@@ -1,5 +1,6 @@
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
+use der_parser::ber::BerClass;
 use der_parser::der::der_read_element_header;
 use kerberos_parser::krb5_parser;
 use kerberos_parser::krb5::{EncryptionType, ErrorCode, PAType, PrincipalName, Realm};
@@ -51,7 +52,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
         match der_read_element_header(data) {
             Ok((_rem,hdr)) => {
                 // Kerberos messages start with an APPLICATION header
-                if hdr.class != 0b01 { return ParseResult::Error; }
+                if hdr.class != BerClass::Application { return ParseResult::Error; }
                 debug!("hdr: {:?}", hdr);
                 match hdr.tag.0 {
                     10 => {
@@ -213,7 +214,7 @@ pub fn kerberos_probe_udp(i: &[u8], _l4info: &L4Info) -> ProbeResult {
     match der_read_element_header(i) {
         Ok((rem,hdr)) => {
             // Kerberos messages start with an APPLICATION header
-            if hdr.class != 0b01 { return ProbeResult::NotForUs; }
+            if hdr.class != BerClass::Application { return ProbeResult::NotForUs; }
             // Tag number should be <= 30
             if hdr.tag.0 >= 30 { return ProbeResult::NotForUs; }
             // Kerberos messages contain sequences
