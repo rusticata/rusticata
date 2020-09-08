@@ -35,4 +35,4 @@ x509-parser = "0.8.0-beta1"
 
 [dev-dependencies]
 env_logger = "0.7"
-hex-literal = "0.2"
+hex-literal = "0.3"
