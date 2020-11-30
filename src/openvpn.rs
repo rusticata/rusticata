@@ -63,7 +63,7 @@ pub fn openvpn_tcp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
     // XXX
     match parse_openvpn_tcp(i) {
         Ok((rem,pkt)) => {
-            match pkt.hdr.opcode {
+            let is_ok = match pkt.hdr.opcode {
                 Opcode::P_CONTROL_V1 => {
                     rem.len() > 3 && rem[0..1] == [0x16, 0x03]
                 },
@@ -71,9 +71,10 @@ pub fn openvpn_tcp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
                     rem.is_empty()
                 },
                 _ => false,
-            }
+            };
+            if is_ok { ProbeResult::Certain } else { ProbeResult::Unsure }
         },
-        _ => false,
-    }.into()
+        _ => ProbeResult::NotForUs,
+    }
 }
 
