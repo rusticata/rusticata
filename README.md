@@ -1,6 +1,6 @@
-# Rusticata
+[![Github CI](https://github.com/rusticata/rusticata/workflows/Continuous%20integration/badge.svg)](https://github.com/rusticata/rusticata/actions)
 
-[![Build Status](https://travis-ci.org/rusticata/rusticata.svg?branch=master)](https://travis-ci.org/rusticata/rusticata)
+# Rusticata
 
 ## Overview
 
