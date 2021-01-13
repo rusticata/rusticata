@@ -1,20 +1,21 @@
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
-use dhcp4r::{
-    options::DhcpOption,
-    packet::Packet
-};
+use dhcp4r::{options::DhcpOption, packet::Packet};
 use std::net::Ipv4Addr;
 
 pub struct DHCPBuilder {}
 impl RBuilder for DHCPBuilder {
-    fn build(&self) -> Box<dyn RParser> { Box::new(DHCPParser::new(b"DHCP")) }
-    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(dhcp_probe) }
+    fn build(&self) -> Box<dyn RParser> {
+        Box::new(DHCPParser::new(b"DHCP"))
+    }
+    fn get_l4_probe(&self) -> Option<ProbeL4> {
+        Some(dhcp_probe)
+    }
 }
 
 #[derive(Default)]
 pub struct DHCPParser<'a> {
-    _name: Option<&'a[u8]>,
+    _name: Option<&'a [u8]>,
     reply: bool,
     xid: u32,
     chaddr: Option<[u8; 6]>,
@@ -23,7 +24,7 @@ pub struct DHCPParser<'a> {
 }
 
 impl<'a> DHCPParser<'a> {
-    pub fn new(name:&[u8]) -> DHCPParser {
+    pub fn new(name: &[u8]) -> DHCPParser {
         DHCPParser {
             _name: Some(name),
             ..DHCPParser::default()
@@ -48,20 +49,20 @@ impl<'a> RParser for DHCPParser<'a> {
                     match option {
                         DhcpOption::HostName(s) => {
                             self.hostname = Some(s.clone());
-                        },
+                        }
                         DhcpOption::ServerIdentifier(ip4) => {
                             self.server_identifier = Some(*ip4);
-                        },
-                        _ => {},
+                        }
+                        _ => {}
                     }
                 }
                 ParseResult::Ok
             }
-            _ => ParseResult::Error
+            _ => ParseResult::Error,
         }
     }
 
-    gen_get_variants!{DHCPParser, "dhcp.",
+    gen_get_variants! {DHCPParser, "dhcp.",
         reply => into,
         xid => into,
         chaddr => |s| {

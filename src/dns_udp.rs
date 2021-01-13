@@ -4,12 +4,16 @@ use dns_parser::Packet;
 
 pub struct DnsUDPBuilder {}
 impl RBuilder for DnsUDPBuilder {
-    fn build(&self) -> Box<dyn RParser> { Box::new(DnsUDPParser::new(b"DNS/UDP")) }
-    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(dns_probe_udp) }
+    fn build(&self) -> Box<dyn RParser> {
+        Box::new(DnsUDPParser::new(b"DNS/UDP"))
+    }
+    fn get_l4_probe(&self) -> Option<ProbeL4> {
+        Some(dns_probe_udp)
+    }
 }
 
 pub struct DnsUDPParser<'a> {
-    _name: Option<&'a[u8]>,
+    _name: Option<&'a [u8]>,
 
     queries: Vec<String>,
 
@@ -17,7 +21,7 @@ pub struct DnsUDPParser<'a> {
 }
 
 impl<'a> DnsUDPParser<'a> {
-    pub fn new(name:&[u8]) -> DnsUDPParser {
+    pub fn new(name: &[u8]) -> DnsUDPParser {
         DnsUDPParser {
             _name: Some(name),
             queries: Vec::new(),
@@ -47,11 +51,11 @@ impl<'a> RParser for DnsUDPParser<'a> {
                 // debug!("pkt: {:?}", pkt);
                 ParseResult::Ok
             }
-            _ => ParseResult::Error
+            _ => ParseResult::Error,
         }
     }
 
-    gen_get_variants!{DnsUDPParser, "dns.",
+    gen_get_variants! {DnsUDPParser, "dns.",
         queries => |s| Some(Variant::from_slice(&s.queries)),
         answers => |s| Some(Variant::from_slice(&s.answers)),
     }

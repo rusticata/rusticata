@@ -2,18 +2,22 @@ use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
 use der_parser::ber::BerClass;
 use der_parser::der::der_read_element_header;
-use kerberos_parser::krb5_parser;
 use kerberos_parser::krb5::{EncryptionType, ErrorCode, PAType, PrincipalName, Realm};
+use kerberos_parser::krb5_parser;
 
 pub struct KerberosUDPBuilder {}
 impl RBuilder for KerberosUDPBuilder {
-    fn build(&self) -> Box<dyn RParser> { Box::new(KerberosParserUDP::new(b"Kerberos/UDP")) }
-    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(kerberos_probe_udp) }
+    fn build(&self) -> Box<dyn RParser> {
+        Box::new(KerberosParserUDP::new(b"Kerberos/UDP"))
+    }
+    fn get_l4_probe(&self) -> Option<ProbeL4> {
+        Some(kerberos_probe_udp)
+    }
 }
 
 #[derive(Default)]
 pub struct KerberosParserUDP<'a> {
-    _name: Option<&'a[u8]>,
+    _name: Option<&'a [u8]>,
     pub(crate) req_type: u32,
     pub(crate) req_cname: Option<PrincipalName>,
     pub(crate) req_sname: Option<PrincipalName>,
@@ -50,16 +54,18 @@ impl<'a> RParser for KerberosParserUDP<'a> {
     #[allow(clippy::cognitive_complexity)]
     fn parse_l4(&mut self, data: &[u8], _direction: Direction) -> ParseResult {
         match der_read_element_header(data) {
-            Ok((_rem,hdr)) => {
+            Ok((_rem, hdr)) => {
                 // Kerberos messages start with an APPLICATION header
-                if hdr.class != BerClass::Application { return ParseResult::Error; }
+                if hdr.class != BerClass::Application {
+                    return ParseResult::Error;
+                }
                 debug!("hdr: {:?}", hdr);
                 match hdr.tag.0 {
                     10 => {
                         self.req_type = hdr.tag.0;
                         let res = krb5_parser::parse_as_req(data);
                         debug!("AS-REQ: {:?}", res);
-                        if let Ok((_,kdc_req)) = res {
+                        if let Ok((_, kdc_req)) = res {
                             debug!("AS-REQ cname: {:?}", kdc_req.req_body.cname);
                             debug!("AS-REQ realm: {:?}", kdc_req.req_body.realm);
                             debug!("AS-REQ sname: {:?}", kdc_req.req_body.sname);
@@ -71,12 +77,12 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                             self.req_sname = kdc_req.req_body.sname;
                             self.req_crealm = Some(kdc_req.req_body.realm);
                         };
-                    },
+                    }
                     11 => {
                         self.rep_type = hdr.tag.0;
                         let res = krb5_parser::parse_as_rep(data);
                         debug!("AS-REP: {:?}", res);
-                        if let Ok((_,kdc_rep)) = res {
+                        if let Ok((_, kdc_rep)) = res {
                             debug!("AS-REP cname: {:?}", kdc_rep.cname);
                             debug!("AS-REP crealm: {:?}", kdc_rep.crealm);
                             debug!("AS-REP ticket.sname: {:?}", kdc_rep.ticket.sname);
@@ -91,12 +97,12 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                                 debug!("AS-REP weak crypto");
                             }
                         };
-                    },
+                    }
                     12 => {
                         self.req_type = hdr.tag.0;
                         let res = krb5_parser::parse_tgs_req(data);
                         debug!("TGS-REQ: {:?}", res);
-                        if let Ok((_,kdc_req)) = res {
+                        if let Ok((_, kdc_req)) = res {
                             debug!("TGS-REQ cname: {:?}", kdc_req.req_body.cname);
                             debug!("TGS-REQ realm: {:?}", kdc_req.req_body.realm);
                             debug!("TGS-REQ sname: {:?}", kdc_req.req_body.sname);
@@ -107,25 +113,34 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                                 // SCLogInfo!("TGS-REQ padata: {:?}", padata);
                                 if padata.padata_type == PAType::PA_TGS_REQ {
                                     match krb5_parser::parse_ap_req(padata.padata_value) {
-                                        Ok((_,ap_req)) => {
+                                        Ok((_, ap_req)) => {
                                             // SCLogInfo!("parse_ap_req: {:?}",ap_req);
                                             if let Ok(s) = ap_req.ap_options.as_slice() {
-                                                debug!("TGS-REQ AP-REQ ap_options: {}", to_hex_string(s))
+                                                debug!(
+                                                    "TGS-REQ AP-REQ ap_options: {}",
+                                                    to_hex_string(s)
+                                                )
                                             }
-                                            debug!("TGS-REQ AP-REQ ticket.sname: {:?}", ap_req.ticket.sname);
-                                            debug!("TGS-REQ AP-REQ ticket.realm: {:?}", ap_req.ticket.realm);
+                                            debug!(
+                                                "TGS-REQ AP-REQ ticket.sname: {:?}",
+                                                ap_req.ticket.sname
+                                            );
+                                            debug!(
+                                                "TGS-REQ AP-REQ ticket.realm: {:?}",
+                                                ap_req.ticket.realm
+                                            );
                                         }
-                                        x => debug!("ERROR parse_ap_req: {:?}",x),
+                                        x => debug!("ERROR parse_ap_req: {:?}", x),
                                     }
                                 }
                             }
                         };
-                    },
+                    }
                     13 => {
                         self.rep_type = hdr.tag.0;
                         let res = krb5_parser::parse_tgs_rep(data);
                         debug!("TGS-REP: {:?}", res);
-                        if let Ok((_,kdc_rep)) = res {
+                        if let Ok((_, kdc_rep)) = res {
                             debug!("TGS-REP cname: {:?}", kdc_rep.cname);
                             debug!("TGS-REP ticket sname: {:?}", kdc_rep.ticket.sname);
                             debug!("TGS-REP ticket.realm: {:?}", kdc_rep.ticket.realm);
@@ -136,43 +151,43 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                                 debug!("AS-REP weak crypto");
                             }
                         };
-                    },
+                    }
                     14 => {
                         self.req_type = hdr.tag.0;
                         let res = krb5_parser::parse_ap_req(data);
                         debug!("AP-REQ: {:?}", res);
-                        if let Ok((_,ap_req)) = res {
+                        if let Ok((_, ap_req)) = res {
                             debug!("AP-REQ ticket sname: {:?}", ap_req.ticket.sname);
                             debug!("AP-REQ ticket.realm: {:?}", ap_req.ticket.realm);
                         };
-                    },
+                    }
                     15 => {
                         self.rep_type = hdr.tag.0;
                         let res = krb5_parser::parse_ap_rep(data);
                         debug!("AP-REP {:?}", res);
-                    },
+                    }
                     30 => {
                         self.rep_type = hdr.tag.0;
                         let res = krb5_parser::parse_krb_error(data);
                         debug!("KRB-ERROR: {:?}", res);
                         debug!("KRB-ERROR: failed request: {:?}", self.req_type);
-                        if let Ok((_,error)) = res {
+                        if let Ok((_, error)) = res {
                             debug!("KRB-ERROR: cname: {:?}", error.cname);
                             debug!("KRB-ERROR: realm: {:?}", error.realm);
                             debug!("KRB-ERROR: sname: {:?}", error.sname);
                             debug!("KRB-ERROR: error_code: {:?}", error.error_code);
                             self.error_code = Some(error.error_code);
                         };
-                    },
+                    }
                     _ => debug!("unknown/unsupported tag {}", hdr.tag),
                 }
                 ParseResult::Ok
-            },
-            _ => ParseResult::Error
+            }
+            _ => ParseResult::Error,
         }
     }
 
-    gen_get_variants!{KerberosParserUDP, "kerberos.",
+    gen_get_variants! {KerberosParserUDP, "kerberos.",
         req_type      => into,
         req_cname     => |s| { s.req_cname.as_ref().map(|x| Variant::OwnedStr(x.to_string())) },
         req_sname     => |s| { s.req_sname.as_ref().map(|x| Variant::OwnedStr(x.to_string())) },
@@ -186,8 +201,8 @@ impl<'a> RParser for KerberosParserUDP<'a> {
 }
 
 impl<'a> KerberosParserUDP<'a> {
-    pub fn new(name: &'a[u8]) -> KerberosParserUDP<'a> {
-        KerberosParserUDP{
+    pub fn new(name: &'a [u8]) -> KerberosParserUDP<'a> {
+        KerberosParserUDP {
             _name: Some(name),
             ..KerberosParserUDP::default()
         }
@@ -195,15 +210,17 @@ impl<'a> KerberosParserUDP<'a> {
 }
 
 /// Return true if Kerberos `EncryptionType` is weak
-pub fn test_weak_crypto(alg:EncryptionType) -> bool {
+pub fn test_weak_crypto(alg: EncryptionType) -> bool {
     // all other ciphers are weak or deprecated
-    !matches!(alg,
-        EncryptionType::AES128_CTS_HMAC_SHA1_96 |
-        EncryptionType::AES256_CTS_HMAC_SHA1_96 |
-        EncryptionType::AES128_CTS_HMAC_SHA256_128 |
-        EncryptionType::AES256_CTS_HMAC_SHA384_192 |
-        EncryptionType::CAMELLIA128_CTS_CMAC |
-        EncryptionType::CAMELLIA256_CTS_CMAC)
+    !matches!(
+        alg,
+        EncryptionType::AES128_CTS_HMAC_SHA1_96
+            | EncryptionType::AES256_CTS_HMAC_SHA1_96
+            | EncryptionType::AES128_CTS_HMAC_SHA256_128
+            | EncryptionType::AES256_CTS_HMAC_SHA384_192
+            | EncryptionType::CAMELLIA128_CTS_CMAC
+            | EncryptionType::CAMELLIA256_CTS_CMAC
+    )
 }
 
 pub fn kerberos_probe_udp(i: &[u8], _l4info: &L4Info) -> ProbeResult {
@@ -211,25 +228,31 @@ pub fn kerberos_probe_udp(i: &[u8], _l4info: &L4Info) -> ProbeResult {
         return ProbeResult::Unsure;
     }
     match der_read_element_header(i) {
-        Ok((rem,hdr)) => {
+        Ok((rem, hdr)) => {
             // Kerberos messages start with an APPLICATION header
-            if hdr.class != BerClass::Application { return ProbeResult::NotForUs; }
+            if hdr.class != BerClass::Application {
+                return ProbeResult::NotForUs;
+            }
             // Tag number should be <= 30
-            if hdr.tag.0 >= 30 { return ProbeResult::NotForUs; }
+            if hdr.tag.0 >= 30 {
+                return ProbeResult::NotForUs;
+            }
             // Kerberos messages contain sequences
-            if rem.is_empty() || rem[0] != 0x30 { return ProbeResult::NotForUs; }
+            if rem.is_empty() || rem[0] != 0x30 {
+                return ProbeResult::NotForUs;
+            }
             // Check kerberos version
             // debug!("hdr: {:?}", hdr);
-            if let Ok((rem,_hdr)) = der_read_element_header(rem) {
+            if let Ok((rem, _hdr)) = der_read_element_header(rem) {
                 if rem.len() > 5 {
                     // Encoding of DER integer 5 (version)
-                    if rem[2..5] == [2,1,5] {
+                    if rem[2..5] == [2, 1, 5] {
                         return ProbeResult::Certain;
                     }
                 }
             }
             ProbeResult::NotForUs
-        },
+        }
         _ => ProbeResult::NotForUs,
     }
 }

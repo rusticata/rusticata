@@ -24,8 +24,12 @@ use tls_parser::*;
 
 pub struct TLSBuilder {}
 impl RBuilder for TLSBuilder {
-    fn build(&self) -> Box<dyn RParser> { Box::new(TlsParser::new(b"TLS")) }
-    fn get_l4_probe(&self) -> Option<ProbeL4> { Some(tls_probe) }
+    fn build(&self) -> Box<dyn RParser> {
+        Box::new(TlsParser::new(b"TLS"))
+    }
+    fn get_l4_probe(&self) -> Option<ProbeL4> {
+        Some(tls_probe)
+    }
 }
 
 impl<'a> From<TlsVersion> for Variant<'a> {
@@ -64,7 +68,7 @@ pub enum TlsParserEvents {
 
 /// TLS parser state
 pub struct TlsParser<'a> {
-    _o: Option<&'a[u8]>,
+    _o: Option<&'a [u8]>,
 
     /// Events raised during parsing. These events should be read (and removed)
     /// by the client application after checking the parsing return value.
@@ -109,31 +113,31 @@ pub struct TlsParser<'a> {
 
 impl<'a> TlsParser<'a> {
     /// Allocation function for a new TLS parser instance
-    pub fn new(i: &'a[u8]) -> TlsParser<'a> {
-        TlsParser{
-            _o:Some(i),
-            events:Vec::new(),
+    pub fn new(i: &'a [u8]) -> TlsParser<'a> {
+        TlsParser {
+            _o: Some(i),
+            events: Vec::new(),
             client_version: TlsVersion(0),
             ssl_record_version: TlsVersion(0),
-            compression:None,
-            cipher:None,
-            state:TlsState::None,
+            compression: None,
+            cipher: None,
+            state: TlsState::None,
             fatal_alert: None,
             kx_bits: None,
             sni: Vec::new(),
             // capacity is the amount of space allocated, which means elements can be added
             // without reallocating the vector
-            tcp_buffer:Vec::with_capacity(16384),
-            buffer:Vec::with_capacity(16384),
-            has_signature_algorithms:false,
-            ja3:None,
+            tcp_buffer: Vec::with_capacity(16384),
+            buffer: Vec::with_capacity(16384),
+            has_signature_algorithms: false,
+            ja3: None,
         }
     }
 
     /// Message-level TLS parsing
     #[allow(clippy::cognitive_complexity)]
     pub fn parse_message_level(&mut self, msg: &TlsMessage, direction: Direction) -> ParseResult {
-        trace!("parse_message_level {:?}",msg);
+        trace!("parse_message_level {:?}", msg);
         // let status = ParseResult::Ok;
         if self.state == TlsState::ClientChangeCipherSpec {
             // Ignore records from now on, they are encrypted
@@ -141,25 +145,28 @@ impl<'a> TlsParser<'a> {
         };
         // update state machine
         match tls_state_transition(self.state, msg, direction == Direction::ToServer) {
-            Ok(s)  => self.state = s,
+            Ok(s) => self.state = s,
             Err(_) => {
                 self.state = TlsState::Invalid;
                 self.events.push(TlsParserEvents::InvalidState as u32);
                 // status |= R_STATUS_EVENTS;
-            },
+            }
         };
-        trace!("TLS new state: {:?}",self.state);
+        trace!("TLS new state: {:?}", self.state);
         // extract variables
         match *msg {
             TlsMessage::Handshake(ref m) => {
                 match *m {
                     TlsMessageHandshake::ClientHello(ref content) => {
-                        debug!("TLS ClientHello version=0x{:x} ({:?})", content.version, content.version);
+                        debug!(
+                            "TLS ClientHello version=0x{:x} ({:?})",
+                            content.version, content.version
+                        );
                         self.client_version = content.version;
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         match &ext {
-                            Ok((rem ,ref l)) => {
-                                if ! rem.is_empty() {
+                            Ok((rem, ref l)) => {
+                                if !rem.is_empty() {
                                     warn!("extensions not entirely parsed");
                                 }
                                 let ja3 = build_ja3_fingerprint(content, l);
@@ -168,45 +175,53 @@ impl<'a> TlsParser<'a> {
                                 self.ja3 = Some(format!("{:?}", digest));
                                 for extension in l {
                                     match *extension {
-                                        TlsExtension::SignatureAlgorithms(_) => self.has_signature_algorithms = true,
+                                        TlsExtension::SignatureAlgorithms(_) => {
+                                            self.has_signature_algorithms = true
+                                        }
                                         TlsExtension::SNI(ref v) => {
-                                            for &(t,sni) in v {
+                                            for &(t, sni) in v {
                                                 match String::from_utf8(sni.to_vec()) {
                                                     Ok(name) => {
-                                                        debug!("SNI: {} {:?}",t,name);
+                                                        debug!("SNI: {} {:?}", t, name);
                                                         self.sni.push(name)
-                                                    },
+                                                    }
                                                     Err(e) => {
-                                                        warn!("Invalid UTF-8 data in SNI ({})",e);
-                                                        self.sni.push("<Invalid UTF-8 data>".to_string())
-                                                    },
+                                                        warn!("Invalid UTF-8 data in SNI ({})", e);
+                                                        self.sni.push(
+                                                            "<Invalid UTF-8 data>".to_string(),
+                                                        )
+                                                    }
                                                 };
                                             }
-                                        },
+                                        }
                                         _ => (),
                                     }
                                 }
-                            },
-                            e  => error!("Could not parse extentions: {:?}",e),
+                            }
+                            e => error!("Could not parse extentions: {:?}", e),
                         };
                         debug!("ext {:?}", ext);
-                    },
+                    }
                     TlsMessageHandshake::ServerHello(ref content) => {
-                        debug!("TLS ServerHello version=0x{:x} ({:?})", content.version, content.version);
+                        debug!(
+                            "TLS ServerHello version=0x{:x} ({:?})",
+                            content.version, content.version
+                        );
                         self.compression = Some(content.compression);
                         self.cipher = content.cipher.get_ciphersuite();
                         match self.cipher {
                             Some(c) => {
                                 debug!("Selected cipher: {:?}", c)
-                            },
+                            }
                             _ => warn!("Unknown cipher 0x{:x}", content.cipher),
                         };
-                        if content.version.0 < 0x0303 { // "signature_algorithms" was introduced with TLS 1.2
+                        if content.version.0 < 0x0303 {
+                            // "signature_algorithms" was introduced with TLS 1.2
                             self.has_signature_algorithms = false;
                         }
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         debug!("extensions: {:?}", ext);
-                        if let Ok((_,ref extensions)) = ext {
+                        if let Ok((_, ref extensions)) = ext {
                             if is_tls13(content, extensions) {
                                 debug!("TLS 1.3 found");
                                 // check ciphers
@@ -217,7 +232,7 @@ impl<'a> TlsParser<'a> {
                                 }
                             }
                         }
-                    },
+                    }
                     TlsMessageHandshake::ServerHelloV13Draft18(ref content) => {
                         debug!("TLS ServerHelloV13Draft18 version=0x{:x}", content.version);
                         // XXX Tls 1.3 ciphers are different
@@ -225,52 +240,55 @@ impl<'a> TlsParser<'a> {
                         match self.cipher {
                             Some(c) => {
                                 debug!("Selected cipher: {:?}", c)
-                            },
+                            }
                             _ => warn!("Unknown cipher 0x{:x}", content.cipher),
                         };
                         let ext = parse_tls_extensions(content.ext.unwrap_or(b""));
                         debug!("extensions: {:?}", ext);
-                    },
+                    }
                     TlsMessageHandshake::Certificate(ref content) => {
                         if direction == Direction::ToServer {
                             debug!("Client certificate");
                         } else {
                             debug!("Server certificate");
                         }
-                        debug!("cert chain length: {}",content.cert_chain.len());
+                        debug!("cert chain length: {}", content.cert_chain.len());
                         for cert in &content.cert_chain {
-                            debug!("cert: {:?}",cert);
+                            debug!("cert: {:?}", cert);
                             match parse_x509_certificate(cert.data) {
-                                Ok((_rem,x509)) => {
+                                Ok((_rem, x509)) => {
                                     let tbs = &x509.tbs_certificate;
-                                    debug!("X.509 Subject: {}",tbs.subject);
-                                    debug!("X.509 Serial: {:X}",tbs.serial);
-                                    debug!("X.509 is CA?: {}",tbs.is_ca());
-                                },
+                                    debug!("X.509 Subject: {}", tbs.subject);
+                                    debug!("X.509 Serial: {:X}", tbs.serial);
+                                    debug!("X.509 is CA?: {}", tbs.is_ca());
+                                }
                                 _ => warn!("Could not decode X.509 certificate"),
                             }
                         }
-                    },
+                    }
                     TlsMessageHandshake::ServerKeyExchange(ref content) => {
                         // The SKE contains the chosen algorithm for the ephemeral key
                         self.parse_dh_parameters(content);
-                    },
+                    }
                     _ => (),
                 }
-            },
+            }
             TlsMessage::Alert(ref a) => {
                 info!("TLS alert: severity: {} code: {}", a.severity, a.code);
                 if a.severity == TlsAlertSeverity::Fatal {
                     self.fatal_alert = Some(a.code);
                 }
-            },
+            }
             TlsMessage::Heartbeat(ref d) => {
                 if d.payload_len as usize > d.payload.len() {
-                    warn!("Heartbeat message with incorrect length {}. Heartbleed attempt ?",d.payload.len());
+                    warn!(
+                        "Heartbeat message with incorrect length {}. Heartbleed attempt ?",
+                        d.payload.len()
+                    );
                     self.events.push(TlsParserEvents::HeartbeatOverflow as u32);
                     // status |= R_STATUS_EVENTS;
                 }
-            },
+            }
             _ => (),
         }
 
@@ -278,19 +296,23 @@ impl<'a> TlsParser<'a> {
     }
 
     /// Record-level TLS parsing
-    pub fn parse_record_level<'b>(&mut self, r: &TlsRawRecord<'b>, direction: Direction) -> ParseResult {
-        let mut v : Vec<u8>;
+    pub fn parse_record_level<'b>(
+        &mut self,
+        r: &TlsRawRecord<'b>,
+        direction: Direction,
+    ) -> ParseResult {
+        let mut v: Vec<u8>;
         let mut status = ParseResult::Ok;
 
-        trace!("parse_record_level {}",r.data.len());
+        trace!("parse_record_level {}", r.data.len());
         // trace!("{:?}",r.hdr);
         // trace!("{:?}",r.data);
 
         // only parse some message types
         match r.hdr.record_type {
             TlsRecordType::ChangeCipherSpec => (),
-            TlsRecordType::Handshake        => (),
-            TlsRecordType::Alert            => (),
+            TlsRecordType::Handshake => (),
+            TlsRecordType::Alert => (),
             _ => return ParseResult::Ok,
         }
 
@@ -307,7 +329,7 @@ impl<'a> TlsParser<'a> {
                 v = self.buffer.split_off(0);
                 v.extend_from_slice(r.data);
                 v.as_slice()
-            },
+            }
         };
         // do not parse if session is encrypted
         if self.state == TlsState::ClientChangeCipherSpec || self.state == TlsState::Invalid {
@@ -316,31 +338,32 @@ impl<'a> TlsParser<'a> {
         // XXX record may be compressed
         //
         // Parse record contents as plaintext
-        match parse_tls_record_with_header(record_buffer,&r.hdr) {
-            Ok((rem2,ref msg_list)) => {
+        match parse_tls_record_with_header(record_buffer, &r.hdr) {
+            Ok((rem2, ref msg_list)) => {
                 self.ssl_record_version = r.hdr.version;
                 for msg in msg_list {
                     status = self.parse_message_level(msg, direction);
                     if status != ParseResult::Ok {
                         return status;
                     }
-                };
+                }
                 if !rem2.is_empty() {
-                    warn!("extra bytes in TLS record: {:?}",rem2);
-                    self.events.push(TlsParserEvents::RecordWithExtraBytes as u32);
+                    warn!("extra bytes in TLS record: {:?}", rem2);
+                    self.events
+                        .push(TlsParserEvents::RecordWithExtraBytes as u32);
                     // status |= R_STATUS_EVENTS;
                 };
             }
             Err(Err::Incomplete(needed)) => {
                 trace!("Defragmentation required (TLS record)");
-                trace!("Missing {:?} bytes",needed);
+                trace!("Missing {:?} bytes", needed);
                 // Record is fragmented
                 self.buffer.extend_from_slice(r.data);
-            },
-           Err(e) => {
-               warn!("parse_tls_record_with_header failed: {:?}",e);
-               return ParseResult::Error;
-            },
+            }
+            Err(e) => {
+                warn!("parse_tls_record_with_header failed: {:?}", e);
+                return ParseResult::Error;
+            }
         };
 
         status
@@ -348,10 +371,10 @@ impl<'a> TlsParser<'a> {
 
     /// Parsing function, handling TCP chunks fragmentation
     pub fn parse_tcp_level(&mut self, i: &[u8], direction: Direction) -> ParseResult {
-        let mut v : Vec<u8>;
+        let mut v: Vec<u8>;
         let mut status = ParseResult::Ok;
-        trace!("parse_tcp_level ({})",i.len());
-        trace!("defrag buffer size: {}",self.tcp_buffer.len());
+        trace!("parse_tcp_level ({})", i.len());
+        trace!("defrag buffer size: {}", self.tcp_buffer.len());
         // trace!("{:?}",i);
         // do not parse if session is encrypted
         if self.state == TlsState::ClientChangeCipherSpec {
@@ -371,7 +394,7 @@ impl<'a> TlsParser<'a> {
                 v = self.tcp_buffer.split_off(0);
                 v.extend_from_slice(i);
                 v.as_slice()
-            },
+            }
         };
         // trace!("tcp_buffer ({})",tcp_buffer.len());
         let mut cur_i = tcp_buffer;
@@ -384,19 +407,21 @@ impl<'a> TlsParser<'a> {
                     if status != ParseResult::Ok {
                         return status;
                     }
-                },
+                }
                 Err(Err::Incomplete(needed)) => {
                     trace!("Fragmentation required (TCP level)");
-                    trace!("Missing {:?} bytes",needed);
+                    trace!("Missing {:?} bytes", needed);
                     self.tcp_buffer.extend_from_slice(cur_i);
                     break;
-                },
-                Err(e) => { warn!("Parsing failed: {:?}",e); break },
+                }
+                Err(e) => {
+                    warn!("Parsing failed: {:?}", e);
+                    break;
+                }
             }
-        };
+        }
         status
     }
-
 
     fn parse_dh_parameters(&mut self, content: &TlsServerKeyExchangeContents) {
         let cipher = match self.cipher {
@@ -408,61 +433,76 @@ impl<'a> TlsParser<'a> {
         };
         let extended = self.has_signature_algorithms;
         match &cipher.kx {
-            TlsCipherKx::Ecdhe |
-            TlsCipherKx::Ecdh    => {
+            TlsCipherKx::Ecdhe | TlsCipherKx::Ecdh => {
                 // Signed ECDH params
                 match parse_content_and_signature(content.parameters, parse_ecdh_params, extended) {
-                    Ok((rem,ref parsed)) => {
+                    Ok((rem, ref parsed)) => {
                         info!("ECDHE Parameters: {:?}", parsed);
-                        debug!("Temp key: using cipher {:?}",parsed.0.curve_params);
+                        debug!("Temp key: using cipher {:?}", parsed.0.curve_params);
                         if !rem.is_empty() {
-                            warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
+                            warn!(
+                                "parse_content_and_signature: rem not empty ({} bytes)",
+                                rem.len()
+                            );
                         }
                         match &parsed.0.curve_params.params_content {
                             &ECParametersContent::NamedGroup(group) => {
                                 let key_bits = group.key_bits().unwrap_or(0);
                                 debug!("NamedGroup: {}, key={:?} bits", group, key_bits);
                                 self.kx_bits = Some(key_bits as u32);
-                            },
-                            c => info!("Request for key_bits of unknown group {:?}",c),
+                            }
+                            c => info!("Request for key_bits of unknown group {:?}", c),
                         }
-                    },
-                    e => error!("Could not parse ECDHE parameters {:?}",e),
+                    }
+                    e => error!("Could not parse ECDHE parameters {:?}", e),
                 };
-            },
+            }
             TlsCipherKx::Dhe => {
                 // Signed DH params
                 match parse_content_and_signature(content.parameters, parse_dh_params, extended) {
-                    Ok((rem,ref parsed)) => {
+                    Ok((rem, ref parsed)) => {
                         if !rem.is_empty() {
-                            warn!("parse_content_and_signature: rem not empty ({} bytes)", rem.len());
+                            warn!(
+                                "parse_content_and_signature: rem not empty ({} bytes)",
+                                rem.len()
+                            );
                         }
                         info!("DHE Parameters: {:?}", parsed);
-                        debug!("Temp key: using DHE size_p={:?} bits",parsed.0.dh_p.len() * 8);
+                        debug!(
+                            "Temp key: using DHE size_p={:?} bits",
+                            parsed.0.dh_p.len() * 8
+                        );
                         self.kx_bits = Some((parsed.0.dh_p.len() * 8) as u32);
-                    },
-                    e => error!("Could not parse DHE parameters {:?}",e),
+                    }
+                    e => error!("Could not parse DHE parameters {:?}", e),
                 };
-            },
+            }
             TlsCipherKx::Dh => {
                 // Anonymous DH params
                 match parse_dh_params(content.parameters) {
-                    Ok((_,ref parsed)) => {
+                    Ok((_, ref parsed)) => {
                         info!("ADH Parameters: {:?}", parsed);
-                        debug!("Temp key: using ADH size_p={:?} bits",parsed.dh_p.len() * 8);
+                        debug!(
+                            "Temp key: using ADH size_p={:?} bits",
+                            parsed.dh_p.len() * 8
+                        );
                         self.kx_bits = Some((parsed.dh_p.len() * 8) as u32);
-                    },
-                    e => error!("Could not parse ADH parameters {:?}",e),
+                    }
+                    e => error!("Could not parse ADH parameters {:?}", e),
                 };
-            },
-            kx => info!("unhandled KX algorithm: {:?}",kx),
+            }
+            kx => info!("unhandled KX algorithm: {:?}", kx),
         };
     }
 }
 
 impl<'a> RParser for TlsParser<'a> {
     fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
-        trace!("[TLS->parse: direction={:?}, len={}]",direction,data.len());
+        trace!(
+            "[TLS->parse: direction={:?}, len={}]",
+            direction,
+            data.len()
+        );
 
         if data.is_empty() {
             // Connection closed ?
@@ -472,7 +512,7 @@ impl<'a> RParser for TlsParser<'a> {
         self.parse_tcp_level(data, direction)
     }
 
-    gen_get_variants!{TlsParser, "tls.",
+    gen_get_variants! {TlsParser, "tls.",
         client_version     => into,
         ssl_record_version => into,
         ja3                => map_as_ref,
@@ -484,48 +524,41 @@ impl<'a> RParser for TlsParser<'a> {
 }
 
 pub fn tls_probe(i: &[u8], l4info: &L4Info) -> ProbeResult {
-    if i.len() <= 2 { return ProbeResult::Unsure; }
+    if i.len() <= 2 {
+        return ProbeResult::Unsure;
+    }
     // test if TCP
-    if l4info.l4_proto != 6 { return ProbeResult::Unsure; }
+    if l4info.l4_proto != 6 {
+        return ProbeResult::Unsure;
+    }
     // first byte is record type (between 0x14 and 0x17, 0x16 is handhake)
     // second is TLS version major (0x3)
     // third is TLS version minor (0x0 for SSLv3, 0x1 for TLSv1.0, etc.)
-    match (i[0],i[1],i[2]) {
-        (0x14..=0x17,0x03,0..=3) => ProbeResult::Certain,
+    match (i[0], i[1], i[2]) {
+        (0x14..=0x17, 0x03, 0..=3) => ProbeResult::Certain,
         _ => ProbeResult::NotForUs,
     }
 }
 
 /// https://tools.ietf.org/html/draft-davidben-tls-grease-00
-const GREASE_TABLE : &[u16] = &[
-    0x0a0a,
-    0x1a1a,
-    0x2a2a,
-    0x3a3a,
-    0x4a4a,
-    0x5a5a,
-    0x6a6a,
-    0x7a7a,
-    0x8a8a,
-    0x9a9a,
-    0xaaaa,
-    0xbaba,
-    0xcaca,
-    0xdada,
-    0xeaea,
-    0xfafa
+const GREASE_TABLE: &[u16] = &[
+    0x0a0a, 0x1a1a, 0x2a2a, 0x3a3a, 0x4a4a, 0x5a5a, 0x6a6a, 0x7a7a, 0x8a8a, 0x9a9a, 0xaaaa, 0xbaba,
+    0xcaca, 0xdada, 0xeaea, 0xfafa,
 ];
 
-
 /// SSLVersion,Cipher,SSLExtension,EllipticCurve,EllipticCurvePointFormat
-pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &[TlsExtension]) -> String {
-    let mut ja3 = format!("{},",u16::from(content.version));
+pub fn build_ja3_fingerprint(
+    content: &TlsClientHelloContents,
+    extensions: &[TlsExtension],
+) -> String {
+    let mut ja3 = format!("{},", u16::from(content.version));
 
     let ciphers = content.ciphers.iter().join("-");
     ja3.push_str(&ciphers);
     ja3.push(',');
 
-    let ext_str = extensions.iter()
+    let ext_str = extensions
+        .iter()
         .map(TlsExtensionType::from)
         .map(|x| x.0)
         .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
@@ -535,10 +568,12 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &[Tls
 
     for ext in extensions {
         if let TlsExtension::EllipticCurves(ref ec) = ext {
-            ja3.push_str(&ec.iter()
-                 .map(|x| x.0)
-                 .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
-                 .join("-"));
+            ja3.push_str(
+                &ec.iter()
+                    .map(|x| x.0)
+                    .filter(|x| !(GREASE_TABLE.iter().any(|g| g == x)))
+                    .join("-"),
+            );
         }
     }
     ja3.push(',');
@@ -554,7 +589,8 @@ pub fn build_ja3_fingerprint(content: &TlsClientHelloContents, extensions: &[Tls
 
 fn is_tls13(_content: &TlsServerHelloContents, extensions: &[TlsExtension]) -> bool {
     // look extensions, find the TlsSupportedVersion
-    extensions.iter()
+    extensions
+        .iter()
         .find(|&ext| TlsExtensionType::SupportedVersions == ext.into())
         .map(|ref ext| {
             if let TlsExtension::SupportedVersions(ref versions) = ext {
@@ -581,8 +617,14 @@ mod tests {
             println!(" [{}] => {:?}", key, parser.get(key));
         }
         assert_eq!(parser.get("tls.client_version"), Some(Variant::U16(0x0301)));
-        assert_eq!(parser.get("tls.ssl_record_version"), Some(Variant::U16(0x0301)));
-        assert_eq!(parser.get("tls.ja3"), Some(Variant::Str("e2121ae1544cd5acae048d03505068a6")));
+        assert_eq!(
+            parser.get("tls.ssl_record_version"),
+            Some(Variant::U16(0x0301))
+        );
+        assert_eq!(
+            parser.get("tls.ja3"),
+            Some(Variant::Str("e2121ae1544cd5acae048d03505068a6"))
+        );
         assert_eq!(parser.get("invalid key"), None);
         parser.sni.push("foo.com".into());
         if let Some(Variant::List(v)) = parser.get("tls.sni") {

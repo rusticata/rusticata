@@ -77,11 +77,11 @@ impl<'a> RParser for HTTPParser<'a> {
                     "cookie" => {
                         let s = String::from_utf8_lossy(hdr.value).into_owned();
                         self.cookie = Some(s);
-                    },
+                    }
                     "host" => {
                         let s = String::from_utf8_lossy(hdr.value);
                         debug!("host: {}", s);
-                    },
+                    }
                     _ => (),
                 }
             }

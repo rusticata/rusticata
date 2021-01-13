@@ -28,14 +28,14 @@ impl<'a> DnsTCPParser<'a> {
 
 impl<'a> RParser for DnsTCPParser<'a> {
     fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
-        match be_u16::<&[u8],()>(data) {
-            Ok((rem,l)) => {
+        match be_u16::<&[u8], ()>(data) {
+            Ok((rem, l)) => {
                 if l > rem.len() as u16 {
                     return ParseResult::Error;
                 }
                 self.parser.parse_l4(rem, direction)
             }
-            _ => ParseResult::Error
+            _ => ParseResult::Error,
         }
     }
 }
@@ -44,7 +44,7 @@ pub fn dns_probe_tcp(i: &[u8], l4info: &L4Info) -> ProbeResult {
     if i.len() <= 14 {
         return ProbeResult::Unsure;
     }
-    match be_u16::<&[u8],()>(i) {
+    match be_u16::<&[u8], ()>(i) {
         Ok((rem, record_len)) => {
             if record_len < rem.len() as u16 {
                 return ProbeResult::NotForUs;
@@ -54,8 +54,6 @@ pub fn dns_probe_tcp(i: &[u8], l4info: &L4Info) -> ProbeResult {
             }
             dns_probe_udp(rem, l4info)
         }
-        _ => {
-            ProbeResult::NotForUs
-        }
+        _ => ProbeResult::NotForUs,
     }
 }
