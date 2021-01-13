@@ -19,6 +19,7 @@ pub mod prologue;
 pub mod dhcp;
 pub mod dns_tcp;
 pub mod dns_udp;
+pub mod dtls;
 pub mod http;
 pub mod ipsec;
 pub mod ipsec_natt;
