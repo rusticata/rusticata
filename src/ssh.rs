@@ -1,6 +1,10 @@
 use crate::rparser::*;
 use nom::{Err, HexDisplay};
-use ssh_parser::{ssh, SshPacket};
+use ssh_parser::{
+    parse_ssh_identification,
+    parse_ssh_packet,
+    SshPacket
+};
 
 pub struct SSHBuilder {}
 impl RBuilder for SSHBuilder {
@@ -64,7 +68,7 @@ impl<'a> SSHParser<'a> {
     }
 
     fn parse_ident(&mut self, i: &[u8]) -> ParseResult {
-        match ssh::parse_ssh_identification(i) {
+        match parse_ssh_identification(i) {
             Ok((rem,(ref crap, ref res))) => {
                 // In version 2.0, the SSH server is allowed to send an arbitrary number of
                 // UTF-8 lines before the final identification line containing the server
@@ -117,7 +121,7 @@ impl<'a> SSHParser<'a> {
             },
         };
         // info!("parsing:\n{}", buf.to_hex(16));
-        match ssh::parse_ssh_packet(buf) {
+        match parse_ssh_packet(buf) {
             Ok((rem,ref res)) => {
                 // put back remaining data
                 self_buffer.extend_from_slice(rem);

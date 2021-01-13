@@ -18,16 +18,9 @@ use itertools::Itertools;
 
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
-use x509_parser::parse_x509_der;
+use x509_parser::parse_x509_certificate;
 
-use tls_parser::tls::*;
-use tls_parser::tls_alert::{TlsAlertDescription, TlsAlertSeverity};
-use tls_parser::tls_ciphers::*;
-use tls_parser::tls_dh::*;
-use tls_parser::tls_ec::*;
-use tls_parser::tls_extensions::*;
-use tls_parser::tls_sign_hash::*;
-use tls_parser::tls_states::{TlsState,tls_state_transition};
+use tls_parser::*;
 
 pub struct TLSBuilder {}
 impl RBuilder for TLSBuilder {
@@ -247,7 +240,7 @@ impl<'a> TlsParser<'a> {
                         debug!("cert chain length: {}",content.cert_chain.len());
                         for cert in &content.cert_chain {
                             debug!("cert: {:?}",cert);
-                            match parse_x509_der(cert.data) {
+                            match parse_x509_certificate(cert.data) {
                                 Ok((_rem,x509)) => {
                                     let tbs = &x509.tbs_certificate;
                                     debug!("X.509 Subject: {}",tbs.subject);
@@ -305,13 +298,13 @@ impl<'a> TlsParser<'a> {
         let record_buffer = match self.buffer.len() {
             0 => r.data,
             _ => {
-                v = self.buffer.split_off(0);
                 // sanity check vector length to avoid memory exhaustion
                 // maximum length may be 2^24 (handshake message)
                 if self.buffer.len() + r.data.len() > 16_777_216 {
                     self.events.push(TlsParserEvents::RecordOverflow as u32);
                     return ParseResult::Error;
                 };
+                v = self.buffer.split_off(0);
                 v.extend_from_slice(r.data);
                 v.as_slice()
             },
@@ -362,19 +355,20 @@ impl<'a> TlsParser<'a> {
         // trace!("{:?}",i);
         // do not parse if session is encrypted
         if self.state == TlsState::ClientChangeCipherSpec {
-            return status;
+            trace!("TLS session encrypted, activating bypass");
+            return ParseResult::Stop;
         };
         // Check if TCP data is being defragmented
         let tcp_buffer = match self.tcp_buffer.len() {
             0 => i,
             _ => {
-                v = self.tcp_buffer.split_off(0);
                 // sanity check vector length to avoid memory exhaustion
                 // maximum length may be 2^24 (handshake message)
                 if self.tcp_buffer.len() + i.len() > 16_777_216 {
                     self.events.push(TlsParserEvents::RecordOverflow as u32);
                     return ParseResult::Error;
                 };
+                v = self.tcp_buffer.split_off(0);
                 v.extend_from_slice(i);
                 v.as_slice()
             },
@@ -489,8 +483,10 @@ impl<'a> RParser for TlsParser<'a> {
     }
 }
 
-pub fn tls_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+pub fn tls_probe(i: &[u8], l4info: &L4Info) -> ProbeResult {
     if i.len() <= 2 { return ProbeResult::Unsure; }
+    // test if TCP
+    if l4info.l4_proto != 6 { return ProbeResult::Unsure; }
     // first byte is record type (between 0x14 and 0x17, 0x16 is handhake)
     // second is TLS version major (0x3)
     // third is TLS version minor (0x0 for SSLv3, 0x1 for TLSv1.0, etc.)

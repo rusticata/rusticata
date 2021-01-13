@@ -2,7 +2,6 @@ use crate::kerberos_udp::{kerberos_probe_udp, KerberosParserUDP};
 use crate::probe::*;
 use crate::rparser::*;
 use crate::Variant;
-use nom::error::ErrorKind;
 use nom::number::streaming::be_u32;
 
 pub struct KerberosTCPBuilder {}
@@ -44,7 +43,7 @@ impl<'a> RParser for KerberosParserTCP<'a> {
         let mut cur_i = tcp_buffer;
         while !cur_i.is_empty() {
             if self.record_ts == 0 {
-                match be_u32::<(&[u8],ErrorKind)>(cur_i) {
+                match be_u32::<&[u8],()>(cur_i) {
                     Ok((rem,record)) => {
                         self.record_ts = record as usize;
                         cur_i = rem;
@@ -99,7 +98,7 @@ pub fn kerberos_probe_tcp(i: &[u8], l4info: &L4Info) -> ProbeResult {
     if i.len() < 14 {
         return ProbeResult::Unsure;
     }
-    match be_u32::<(&[u8],ErrorKind)>(i) {
+    match be_u32::<&[u8],()>(i) {
         Ok((rem, record_mark)) => {
             if record_mark < rem.len() as u32 { return ProbeResult::NotForUs; }
             kerberos_probe_udp(rem, l4info)

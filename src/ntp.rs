@@ -37,8 +37,8 @@ impl<'a> NtpParser<'a> {
 pub fn ntp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
     if i.len() <= 2 { return ProbeResult::Unsure; }
     match parse_ntp(i) {
-        Ok((_,ref msg)) => {
-            (msg.version == 3 || msg.version == 4).into()
+        Ok(_) => {
+            true.into()
         },
         _ => ProbeResult::NotForUs,
     }

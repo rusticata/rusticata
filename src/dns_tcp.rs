@@ -1,6 +1,5 @@
 use crate::dns_udp::{dns_probe_udp, DnsUDPParser};
 use crate::rparser::*;
-use nom::error::ErrorKind;
 use nom::number::streaming::be_u16;
 
 pub struct DnsTCPBuilder {}
@@ -29,7 +28,7 @@ impl<'a> DnsTCPParser<'a> {
 
 impl<'a> RParser for DnsTCPParser<'a> {
     fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
-        match be_u16::<(&[u8],ErrorKind)>(data) {
+        match be_u16::<&[u8],()>(data) {
             Ok((rem,l)) => {
                 if l > rem.len() as u16 {
                     return ParseResult::Error;
@@ -45,7 +44,7 @@ pub fn dns_probe_tcp(i: &[u8], l4info: &L4Info) -> ProbeResult {
     if i.len() <= 14 {
         return ProbeResult::Unsure;
     }
-    match be_u16::<(&[u8],ErrorKind)>(i) {
+    match be_u16::<&[u8],()>(i) {
         Ok((rem, record_len)) => {
             if record_len < rem.len() as u16 {
                 return ProbeResult::NotForUs;

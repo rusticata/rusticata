@@ -196,15 +196,14 @@ impl<'a> KerberosParserUDP<'a> {
 
 /// Return true if Kerberos `EncryptionType` is weak
 pub fn test_weak_crypto(alg:EncryptionType) -> bool {
-    match alg {
+    // all other ciphers are weak or deprecated
+    !matches!(alg,
         EncryptionType::AES128_CTS_HMAC_SHA1_96 |
         EncryptionType::AES256_CTS_HMAC_SHA1_96 |
         EncryptionType::AES128_CTS_HMAC_SHA256_128 |
         EncryptionType::AES256_CTS_HMAC_SHA384_192 |
         EncryptionType::CAMELLIA128_CTS_CMAC |
-        EncryptionType::CAMELLIA256_CTS_CMAC => false,
-        _ => true, // all other ciphers are weak or deprecated
-    }
+        EncryptionType::CAMELLIA256_CTS_CMAC)
 }
 
 pub fn kerberos_probe_udp(i: &[u8], _l4info: &L4Info) -> ProbeResult {

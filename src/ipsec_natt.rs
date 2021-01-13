@@ -1,6 +1,5 @@
 use crate::rparser::*;
 use crate::ipsec::{IPsecParser, ipsec_probe};
-use nom::error::ErrorKind;
 use nom::number::streaming::be_u32;
 
 pub struct IPsecNatTBuilder {}
@@ -25,7 +24,7 @@ impl<'a> IPsecNatTParser<'a> {
 
 impl<'a> RParser for IPsecNatTParser<'a> {
     fn parse_l4(&mut self, data: &[u8], direction: Direction) -> ParseResult {
-        match be_u32::<(&[u8],ErrorKind)>(data) {
+        match be_u32::<&[u8],()>(data) {
             Ok((rem,mark)) => {
                 if mark != 0 { return ParseResult::Ok; }
                 self.parser.parse_l4(rem, direction)
@@ -40,7 +39,7 @@ impl<'a> RParser for IPsecNatTParser<'a> {
 
 pub fn ikev2_natt_probe(i: &[u8], l4info: &L4Info) -> ProbeResult {
     if i.len() <= 20 { return ProbeResult::Unsure; }
-    match be_u32::<(&[u8],ErrorKind)>(i) {
+    match be_u32::<&[u8],()>(i) {
         Ok((rem,mark)) if mark == 0 => {
             ipsec_probe(rem, l4info)
         }

@@ -212,7 +212,7 @@ impl<'a> IPsecParser<'a> {
             // Rule 2: check if no DH was proposed
             fn has_dh(proposals: &[IkeV2Transform]) -> bool {
                 proposals.iter().any(|x| {
-                    if let IkeV2Transform::DH(_) = x { true } else { false }
+                    matches!(x, IkeV2Transform::DH(_))
                 })
             }
             if !has_dh(&proposals)
