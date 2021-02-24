@@ -7,6 +7,7 @@ pub use crate::ipsec::*;
 pub use crate::ipsec_natt::*;
 pub use crate::kerberos_tcp::*;
 pub use crate::kerberos_udp::*;
+pub use crate::ldap::*;
 pub use crate::ntp::*;
 pub use crate::openvpn::*;
 pub use crate::openvpn_udp::*;

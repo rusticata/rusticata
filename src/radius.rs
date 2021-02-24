@@ -41,5 +41,15 @@ pub fn radius_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
     if i.len() <= 2 {
         return ProbeResult::NotForUs;
     }
-    parse_radius_data(i).is_ok().into()
+    match parse_radius_data(i) {
+        Ok((rem, _)) => {
+            if !rem.is_empty() {
+                warn!("Extra bytes after Radius data");
+                ProbeResult::NotForUs
+            } else {
+                ProbeResult::Certain
+            }
+        }
+        _ => ProbeResult::NotForUs,
+    }
 }
