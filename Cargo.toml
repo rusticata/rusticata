@@ -17,7 +17,7 @@ edition = "2018"
 [dependencies]
 log = "0.4.6"
 nom = "6.0"
-itertools = "0.9"
+itertools = "0.10"
 md5 = "0.7"
 der-parser = "5.0.0"
 dhcp4r = "0.2.1"
