@@ -1,7 +1,7 @@
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
-
 use ipsec_parser::*;
+use itertools::Itertools;
 
 impl<'a> From<IkeTransformDHType> for Variant<'a> {
     fn from(input: IkeTransformDHType) -> Self {
@@ -30,6 +30,9 @@ pub struct IPsecParser<'a> {
 
     /// The Diffie-Hellman group from the server KE message, if present.
     pub dh_group: IkeTransformDHType,
+
+    /// JA3-like hash
+    pub fingerprint: Option<String>,
 }
 
 impl<'a> RParser for IPsecParser<'a> {
@@ -45,8 +48,12 @@ impl<'a> RParser for IPsecParser<'a> {
                     warn!("Unknown header version: {}.{}", hdr.maj_ver, hdr.min_ver);
                 }
                 match parse_ikev2_payload_list(rem, hdr.next_payload) {
-                    Ok((_, Ok(ref p))) => {
+                    Ok((_, Ok(p))) => {
                         debug!("parse_ikev2_payload_with_type: {:?}", p);
+                        let fingerprint = build_ipsec_fingerprint(hdr, &p);
+                        let digest = md5::compute(&fingerprint);
+                        debug!("Fingerprint: {} --> {:x}", fingerprint, digest);
+                        self.fingerprint = Some(format!("{:?}", digest));
                         for payload in p {
                             match payload.content {
                                 IkeV2PayloadContent::SA(ref prop) => {
@@ -80,12 +87,13 @@ impl<'a> RParser for IPsecParser<'a> {
     }
 
     gen_get_variants! {IPsecParser, "ikev2.",
-        dh_group   => into,
-        enc        => |s| { s.get_server_proposal_enc().map(|x| x.into()) },
-        prf        => |s| { s.get_server_proposal_prf().map(|x| x.into()) },
-        auth       => |s| { s.get_server_proposal_auth().map(|x| x.into()) },
-        dh         => |s| { s.get_server_proposal_dh().map(|x| x.into()) },
-        esn        => |s| { s.get_server_proposal_esn().map(|x| x.into()) },
+        dh_group    => into,
+        enc         => |s| { s.get_server_proposal_enc().map(|x| x.into()) },
+        prf         => |s| { s.get_server_proposal_prf().map(|x| x.into()) },
+        auth        => |s| { s.get_server_proposal_auth().map(|x| x.into()) },
+        dh          => |s| { s.get_server_proposal_dh().map(|x| x.into()) },
+        esn         => |s| { s.get_server_proposal_esn().map(|x| x.into()) },
+        fingerprint => map_as_ref,
     }
 }
 
@@ -114,6 +122,7 @@ impl<'a> IPsecParser<'a> {
             client_proposals: Vec::new(),
             server_proposals: Vec::new(),
             dh_group: IkeTransformDHType::None,
+            fingerprint: None,
         }
     }
 
@@ -273,6 +282,53 @@ impl<'a> IPsecParser<'a> {
         debug!("client_proposals: {:?}", self.client_proposals);
         debug!("server_proposals: {:?}", self.server_proposals);
     }
+}
+
+/// IPsec version,exchnage type,payload types,notify types,transform proposals
+pub fn build_ipsec_fingerprint(hdr: &IkeV2Header, payload_list: &[IkeV2Payload]) -> String {
+    // version is fix
+    let mut fingerprint = String::from("2.0,");
+    // exchange type
+    fingerprint += &format!("{},", hdr.exch_type.0);
+    // payload types
+    let payload_types_str = payload_list
+        .iter()
+        .fold(vec![hdr.next_payload.0], |mut acc, payload| {
+            acc.push(payload.hdr.next_payload_type.0);
+            acc
+        })
+        .iter()
+        .join("-");
+    fingerprint.push_str(&payload_types_str);
+    // notify types
+    fingerprint.push(',');
+    let notify_types_str = payload_list
+        .iter()
+        .filter_map(|payload| {
+            if let IkeV2PayloadContent::Notify(notify) = &payload.content {
+                Some(notify.notify_type.0)
+            } else {
+                None
+            }
+        })
+        .join("-");
+    fingerprint.push_str(&notify_types_str);
+    // proposals and transforms
+    fingerprint.push(',');
+    let mut transforms = Vec::new();
+    for payload in payload_list {
+        if let IkeV2PayloadContent::SA(sa_list) = &payload.content {
+            for sa in sa_list {
+                for xform in &sa.transforms {
+                    transforms.push(format!("{}:{}", xform.transform_type.0, xform.transform_id));
+                }
+            }
+        }
+    }
+    let transforms_str = transforms.iter().join("-");
+    fingerprint.push_str(&transforms_str);
+    // finish
+    fingerprint
 }
 
 pub fn ipsec_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
