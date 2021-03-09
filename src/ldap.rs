@@ -71,6 +71,7 @@ impl<'a> RParser for LDAPParser<'a> {
         protocol_op => |s| {
             s.protocol_op.map(|op| Variant::OwnedStr(op.to_string()))
         },
+        bind_dn               => map_as_ref,
         sasl_mech             => map_as_ref,
         has_starttls          => into,
         tls_client_version => |s| {
