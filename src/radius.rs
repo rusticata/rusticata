@@ -36,13 +36,21 @@ impl<'a> RParser for RadiusParser<'a> {
     }
 }
 
-// #[allow(dead_code)]
+#[allow(clippy::manual_range_contains)]
 pub fn radius_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
-    if i.len() <= 2 {
+    let sz = i.len();
+    if sz <= 2 {
+        return ProbeResult::NotForUs;
+    }
+    // RFC 2865: size must be >= 20 and <= 4096
+    if sz < 20 || sz > 4096 {
         return ProbeResult::NotForUs;
     }
     match parse_radius_data(i) {
-        Ok((rem, _)) => {
+        Ok((rem, r)) => {
+            if r.code.0 == 0 || r.code.0 > 13 || r.length as usize != i.len() {
+                return ProbeResult::NotForUs;
+            }
             if !rem.is_empty() {
                 warn!("Extra bytes after Radius data");
                 ProbeResult::NotForUs
