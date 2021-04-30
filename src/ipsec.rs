@@ -338,17 +338,17 @@ pub fn ipsec_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
     match parse_ikev2_header(i) {
         Ok((_, ref hdr)) => {
             if hdr.maj_ver != 2 || hdr.min_ver != 0 {
-                debug!(
-                    "ipsec_probe: could be ipsec, but with unsupported/invalid version {}.{}",
-                    hdr.maj_ver, hdr.min_ver
-                );
+                // trace!(
+                //     "ipsec_probe: could be ipsec, but with unsupported/invalid version {}.{}",
+                //     hdr.maj_ver, hdr.min_ver
+                // );
                 return ProbeResult::NotForUs;
             }
             if hdr.exch_type.0 < 34 || hdr.exch_type.0 > 37 {
-                debug!(
-                    "ipsec_probe: could be ipsec, but with unsupported/invalid exchange type {}",
-                    hdr.exch_type.0
-                );
+                // trace!(
+                //     "ipsec_probe: could be ipsec, but with unsupported/invalid exchange type {}",
+                //     hdr.exch_type.0
+                // );
                 return ProbeResult::NotForUs;
             }
             ProbeResult::Certain
