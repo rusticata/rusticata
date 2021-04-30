@@ -36,12 +36,22 @@ impl<'a> NtpParser<'a> {
     }
 }
 
-pub fn ntp_probe(i: &[u8], _l4info: &L4Info) -> ProbeResult {
+pub fn ntp_probe(i: &[u8], l4info: &L4Info) -> ProbeResult {
     if i.len() <= 2 {
         return ProbeResult::Unsure;
     }
+    if l4info.l4_proto != 17 {
+        return ProbeResult::NotForUs;
+    }
     match parse_ntp(i) {
-        Ok(_) => true.into(),
+        Ok((rem, _)) => {
+            if rem.is_empty() {
+                // version was already tested
+                ProbeResult::Certain
+            } else {
+                ProbeResult::Unsure
+            }
+        }
         _ => ProbeResult::NotForUs,
     }
 }
