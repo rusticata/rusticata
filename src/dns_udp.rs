@@ -61,6 +61,22 @@ impl<'a> RParser for DnsUDPParser<'a> {
     }
 }
 
-pub fn dns_probe_udp(i: &[u8], _l4info: &L4Info) -> ProbeResult {
-    Packet::parse(i).is_ok().into()
+pub fn dns_probe_udp(i: &[u8], l4info: &L4Info) -> ProbeResult {
+    match Packet::parse(i) {
+        Ok(packet) => {
+            if packet.header.query {
+                if packet.questions.is_empty() {
+                    return ProbeResult::NotForUs;
+                }
+            } else if packet.answers.is_empty() ||
+                    // if all of the above is wrong, test port
+                    ![53, 5353].contains(&l4info.dst_port)
+            {
+                return ProbeResult::NotForUs;
+            }
+            // XXX dns_parser does not return remaining bytes
+            ProbeResult::Certain
+        }
+        _ => ProbeResult::NotForUs,
+    }
 }
