@@ -65,6 +65,10 @@ impl<'a> RParser for DnsUDPParser<'a> {
 }
 
 pub fn dns_probe_udp(i: &[u8], l4info: &L4Info) -> ProbeResult {
+    if l4info.src_port == 137 || l4info.dst_port == 137 {
+        // NetBIOS NBSS looks like DNS, but parser will fail on labels
+        return ProbeResult::NotForUs;
+    }
     match Packet::parse(i) {
         Ok(packet) => {
             if packet.header.query {

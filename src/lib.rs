@@ -28,6 +28,7 @@ pub mod ipsec_natt;
 pub mod kerberos_tcp;
 pub mod kerberos_udp;
 pub mod ldap;
+pub mod netbios;
 pub mod ntp;
 pub mod openvpn;
 pub mod openvpn_udp;

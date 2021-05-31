@@ -35,8 +35,7 @@ impl<'a> RParser for NBSSParser<'a> {
         match parse_nbss_packet(data) {
             Ok((_rem, packet)) => {
                 if packet.header.request() {
-                    debug!("NBSS request");
-                    debug!("  req: {:?}", packet);
+                    debug!("  NBSS request: {:?}", packet);
                     for q in packet.questions {
                         match q.qname.decode() {
                             Ok(name) => self.questions.push(name),
@@ -44,8 +43,7 @@ impl<'a> RParser for NBSSParser<'a> {
                         }
                     }
                 } else {
-                    debug!("NBSS answer");
-                    debug!("  req: {:?}", packet);
+                    debug!("  NBSS answer: {:?}", packet);
                     // XXX usually, queries are broadcasted, so answer will be associated to a different flow
                     for rr in packet.rr_answer {
                         match rr.rr_name.decode() {
@@ -56,7 +54,10 @@ impl<'a> RParser for NBSSParser<'a> {
                 }
                 ParseResult::Ok
             }
-            _ => ParseResult::Error,
+            e => {
+                warn!("error: {:?}", e);
+                ParseResult::Error
+            }
         }
     }
 

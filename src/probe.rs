@@ -33,12 +33,14 @@ impl ProbeResult {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct L3Info {
     pub src: IpAddr,
     pub dst: IpAddr,
     pub proto: u16,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct L4Info {
     pub src_port: u16,
     pub dst_port: u16,
