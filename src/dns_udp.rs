@@ -35,14 +35,14 @@ impl<'a> RParser for DnsUDPParser<'a> {
         match Packet::parse(data) {
             Ok(pkt) => {
                 if pkt.header.query {
-                    debug!("DNS query");
+                    trace!("DNS query");
                     for q in &pkt.questions {
                         debug!("  query: {}/{:?}", q.qname, q.qtype);
                         self.queries.push(q.qname.to_string());
                         // XXX query type is lost
                     }
                 } else {
-                    debug!("DNS answer");
+                    trace!("DNS answer");
                     for answer in &pkt.answers {
                         debug!("  answer: {}/{:?}", answer.name, answer.data);
                         self.answers.push(format!("{:?}", answer.data));
@@ -51,7 +51,10 @@ impl<'a> RParser for DnsUDPParser<'a> {
                 // debug!("pkt: {:?}", pkt);
                 ParseResult::Ok
             }
-            _ => ParseResult::Error,
+            e => {
+                debug!("parse error: {:?}", e);
+                ParseResult::Error
+            }
         }
     }
 

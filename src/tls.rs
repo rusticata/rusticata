@@ -254,7 +254,7 @@ impl<'a> TlsParser<'a> {
                         }
                         debug!("cert chain length: {}", content.cert_chain.len());
                         for cert in &content.cert_chain {
-                            debug!("cert: {:?}", cert);
+                            trace!("cert: {:?}", cert);
                             match parse_x509_certificate(cert.data) {
                                 Ok((_rem, x509)) => {
                                     let tbs = &x509.tbs_certificate;
@@ -437,8 +437,8 @@ impl<'a> TlsParser<'a> {
                 // Signed ECDH params
                 match parse_content_and_signature(content.parameters, parse_ecdh_params, extended) {
                     Ok((rem, ref parsed)) => {
-                        info!("ECDHE Parameters: {:?}", parsed);
-                        debug!("Temp key: using cipher {:?}", parsed.0.curve_params);
+                        trace!("ECDHE Parameters: {:?}", parsed);
+                        debug!("Temp key: using ECDHE cipher {:?}", parsed.0.curve_params);
                         if !rem.is_empty() {
                             warn!(
                                 "parse_content_and_signature: rem not empty ({} bytes)",
@@ -467,7 +467,7 @@ impl<'a> TlsParser<'a> {
                                 rem.len()
                             );
                         }
-                        info!("DHE Parameters: {:?}", parsed);
+                        trace!("DHE Parameters: {:?}", parsed);
                         debug!(
                             "Temp key: using DHE size_p={:?} bits",
                             parsed.0.dh_p.len() * 8
@@ -481,7 +481,7 @@ impl<'a> TlsParser<'a> {
                 // Anonymous DH params
                 match parse_dh_params(content.parameters) {
                     Ok((_, ref parsed)) => {
-                        info!("ADH Parameters: {:?}", parsed);
+                        trace!("ADH Parameters: {:?}", parsed);
                         debug!(
                             "Temp key: using ADH size_p={:?} bits",
                             parsed.dh_p.len() * 8
