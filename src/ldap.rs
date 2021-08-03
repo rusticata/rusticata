@@ -286,7 +286,7 @@ impl<'a> LDAPParser<'a> {
                     if let Some(data) = &creds.credentials {
                         if !data.is_empty() {
                             use nom::HexDisplay;
-                            println!("XXX\n{}", (&data).to_hex(16));
+                            println!("XXX\n{}", data.to_hex(16));
                             let (_, xxx) = parse_gssapi(data).unwrap(); // XXX
                             println!("{:?}", xxx);
                         }

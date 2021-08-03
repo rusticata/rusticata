@@ -43,7 +43,7 @@ impl<'a> RParser for DTLSParser<'a> {
                             // Ignore records from now on, they are encrypted
                             return ParseResult::Stop;
                         };
-                        self.parse_message(&msg, direction);
+                        self.parse_message(msg, direction);
                     }
                 }
                 if !rem.is_empty() {

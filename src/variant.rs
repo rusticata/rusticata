@@ -65,7 +65,7 @@ impl<'a> From<&'a str> for Variant<'a> {
 
 impl<'a> From<&'a String> for Variant<'a> {
     fn from(input: &'a String) -> Self {
-        Variant::Str(&input)
+        Variant::Str(input)
     }
 }
 

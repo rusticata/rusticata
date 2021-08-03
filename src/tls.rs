@@ -579,7 +579,7 @@ pub fn build_ja3_fingerprint(
     ja3.push(',');
 
     for ext in extensions {
-        if let TlsExtension::EcPointFormats(ref pf) = ext {
+        if let TlsExtension::EcPointFormats(pf) = ext {
             ja3.push_str(&pf.iter().join("-"));
         }
     }
