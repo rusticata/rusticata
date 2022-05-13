@@ -38,3 +38,6 @@ pub mod snmp;
 pub mod snmpv3;
 pub mod ssh;
 pub mod tls;
+
+// Re-exports
+pub use tls_parser;

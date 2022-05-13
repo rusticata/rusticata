@@ -46,7 +46,7 @@ impl<'a> From<TlsCompressionID> for Variant<'a> {
 
 impl<'a> From<&TlsCipherSuite> for Variant<'a> {
     fn from(input: &TlsCipherSuite) -> Self {
-        Variant::U16(input.id)
+        Variant::U16(input.id.0)
     }
 }
 
@@ -66,9 +66,15 @@ pub enum TlsParserEvents {
     RecordOverflow = 5,
 }
 
+pub type TlsRecordFn = dyn FnMut(Direction, &TlsRawRecord) -> ParseResult + Send + Sync;
+pub type TlsMessageFn = dyn FnMut(Direction, &TlsMessage) -> ParseResult + Send + Sync;
+
 /// TLS parser state
 pub struct TlsParser<'a> {
     _o: Option<&'a [u8]>,
+
+    record_fn: Option<Box<TlsRecordFn>>,
+    message_fn: Option<Box<TlsMessageFn>>,
 
     /// Events raised during parsing. These events should be read (and removed)
     /// by the client application after checking the parsing return value.
@@ -116,6 +122,8 @@ impl<'a> TlsParser<'a> {
     pub fn new(i: &'a [u8]) -> TlsParser<'a> {
         TlsParser {
             _o: Some(i),
+            record_fn: None,
+            message_fn: None,
             events: Vec::new(),
             client_version: TlsVersion(0),
             ssl_record_version: TlsVersion(0),
@@ -134,15 +142,21 @@ impl<'a> TlsParser<'a> {
         }
     }
 
+    /// Set the tls parser's record fn.
+    pub fn set_record_fn(&mut self, record_fn: Option<Box<TlsRecordFn>>) {
+        self.record_fn = record_fn;
+    }
+
+    /// Set the tls parser's message fn.
+    pub fn set_message_fn(&mut self, message_fn: Option<Box<TlsMessageFn>>) {
+        self.message_fn = message_fn;
+    }
+
     /// Message-level TLS parsing
     #[allow(clippy::cognitive_complexity)]
     pub fn parse_message_level(&mut self, msg: &TlsMessage, direction: Direction) -> ParseResult {
         trace!("parse_message_level {:?}", msg);
-        // let status = ParseResult::Ok;
-        if self.state == TlsState::ClientChangeCipherSpec {
-            // Ignore records from now on, they are encrypted
-            return ParseResult::Stop;
-        };
+
         // update state machine
         match tls_state_transition(self.state, msg, direction == Direction::ToServer) {
             Ok(s) => self.state = s,
@@ -153,6 +167,18 @@ impl<'a> TlsParser<'a> {
             }
         };
         trace!("TLS new state: {:?}", self.state);
+
+        if let Some(f) = self.message_fn.as_mut() {
+            return f(direction, msg);
+        }
+
+        // let status = ParseResult::Ok;
+        if self.state == TlsState::ClientChangeCipherSpec {
+            // Ignore records from now on, they are encrypted
+            self.state = TlsState::SessionEncrypted;
+            return ParseResult::Stop;
+        };
+
         // extract variables
         match *msg {
             TlsMessage::Handshake(ref m) => {
@@ -304,6 +330,13 @@ impl<'a> TlsParser<'a> {
         let mut v: Vec<u8>;
         let mut status = ParseResult::Ok;
 
+        if let Some(f) = self.record_fn.as_mut() {
+            let r = f(direction, r);
+            if r != ParseResult::Ok {
+                return r;
+            }
+        }
+
         trace!("parse_record_level {}", r.data.len());
         // trace!("{:?}",r.hdr);
         // trace!("{:?}",r.data);
@@ -332,7 +365,17 @@ impl<'a> TlsParser<'a> {
             }
         };
         // do not parse if session is encrypted
-        if self.state == TlsState::ClientChangeCipherSpec || self.state == TlsState::Invalid {
+        debug!("TLS State: {:?}", self.state);
+        if self.state == TlsState::SessionEncrypted {
+            trace!("TLS session encrypted, activating bypass");
+            return ParseResult::Stop;
+        };
+        if self.state == TlsState::Invalid {
+            trace!("TLS session in invalid state, activating bypass");
+            return status;
+        }
+        if self.state == TlsState::ClientChangeCipherSpec && direction == Direction::ToServer {
+            trace!("Skipping message after client CCS");
             return status;
         };
         // XXX record may be compressed
@@ -376,11 +419,6 @@ impl<'a> TlsParser<'a> {
         trace!("parse_tcp_level ({})", i.len());
         trace!("defrag buffer size: {}", self.tcp_buffer.len());
         // trace!("{:?}",i);
-        // do not parse if session is encrypted
-        if self.state == TlsState::ClientChangeCipherSpec {
-            trace!("TLS session encrypted, activating bypass");
-            return ParseResult::Stop;
-        };
         // Check if TCP data is being defragmented
         let tcp_buffer = match self.tcp_buffer.len() {
             0 => i,
