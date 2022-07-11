@@ -3,8 +3,7 @@ use crate::rparser::*;
 use crate::sasl::parse_sasl_buffer;
 use crate::tls::TlsParser;
 use crate::{gen_get_variants, Variant};
-use der_parser::ber::*;
-use der_parser::error::*;
+use ldap_parser::asn1_rs::{Error, Header};
 use ldap_parser::ldap::*;
 use ldap_parser::*;
 use std::collections::BTreeMap;
@@ -382,12 +381,12 @@ pub fn ldap_probe(i: &[u8], l4info: &L4Info) -> ProbeResult {
     }
 }
 
-fn check_ldap_message_complete(i: &[u8]) -> BerResult<()> {
-    let (i, header) = ber_read_element_header(i)?;
-    let len = header.len.primitive()?;
+fn check_ldap_message_complete(i: &[u8]) -> asn1_rs::ParseResult<()> {
+    let (i, header) = Header::from_ber(i)?;
+    let len = header.length().definite()?;
     if i.len() >= len {
         Ok((i, ()))
     } else {
-        Err(BerError::InvalidLength.into())
+        Err(Error::InvalidLength.into())
     }
 }
