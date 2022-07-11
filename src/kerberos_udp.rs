@@ -4,6 +4,7 @@ use der_parser::ber::BerClass;
 use der_parser::der::der_read_element_header;
 use kerberos_parser::krb5::{EncryptionType, ErrorCode, PAType, PrincipalName, Realm};
 use kerberos_parser::krb5_parser;
+use std::fmt::Write as _;
 
 pub struct KerberosUDPBuilder {}
 impl RBuilder for KerberosUDPBuilder {
@@ -45,7 +46,7 @@ impl<'a> From<ErrorCode> for Variant<'a> {
 pub fn to_hex_string(bytes: &[u8]) -> String {
     let mut s = String::new();
     for &b in bytes {
-        s.push_str(&format!("{:02X}", b));
+        let _ = write!(s, "{:02X}", b);
     }
     s
 }

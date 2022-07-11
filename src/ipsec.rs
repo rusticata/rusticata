@@ -2,6 +2,7 @@ use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
 use ipsec_parser::*;
 use itertools::Itertools;
+use std::fmt::Write as _;
 
 impl<'a> From<IkeTransformDHType> for Variant<'a> {
     fn from(input: IkeTransformDHType) -> Self {
@@ -289,7 +290,7 @@ pub fn build_ipsec_fingerprint(hdr: &IkeV2Header, payload_list: &[IkeV2Payload])
     // version is fix
     let mut fingerprint = String::from("2.0,");
     // exchange type
-    fingerprint += &format!("{},", hdr.exch_type.0);
+    let _ = write!(fingerprint, "{}", hdr.exch_type.0);
     // payload types
     let payload_types_str = payload_list
         .iter()

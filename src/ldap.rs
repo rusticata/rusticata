@@ -38,6 +38,7 @@ pub struct LDAPParser<'a> {
     tls_parser: Option<TlsParser<'a>>,
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct LDAPTransaction {
     message_id: MessageID,
@@ -242,7 +243,7 @@ impl<'a> LDAPParser<'a> {
                 // panic!("XXX Fragmented LDAP");
                 break;
             }
-            match parse_ldap_message(cur_i) {
+            match LdapMessage::from_ber(cur_i) {
                 Ok((rem, msg)) => {
                     trace!("parse_ldap_message: {:?}", msg);
                     self.handle_message(&msg, direction);
@@ -368,7 +369,7 @@ pub fn ldap_probe(i: &[u8], l4info: &L4Info) -> ProbeResult {
         return ProbeResult::Unsure;
     }
     // debug!("Probing for LDAP");
-    if parse_ldap_message(i).is_ok() {
+    if LdapMessage::from_ber(i).is_ok() {
         if COMMON_LDAP_PORTS.contains(&l4info.src_port)
             || COMMON_LDAP_PORTS.contains(&l4info.dst_port)
         {

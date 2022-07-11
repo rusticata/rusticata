@@ -24,7 +24,7 @@ impl<'a> Variant<'a> {
     where
         Variant<'a>: From<&'a T>,
     {
-        let v = v.iter().map(|s| Variant::from(s)).collect();
+        let v = v.iter().map(Variant::from).collect();
         Variant::List(v)
     }
 }
