@@ -75,24 +75,20 @@ impl<'a> RParser for LDAPParser<'a> {
         sasl_mech             => map_as_ref,
         has_starttls          => into,
         tls_client_version => |s| {
-            s.tls_parser.as_ref().map(|p|
-                p.get("tls.client_version")
-            ).flatten()
+            s.tls_parser.as_ref().and_then(|p|
+                p.get("tls.client_version"))
         },
         tls_ssl_record_version => |s| {
-            s.tls_parser.as_ref().map(|p|
-                p.get("tls.ssl_record_version")
-            ).flatten()
+            s.tls_parser.as_ref().and_then(|p|
+                p.get("tls.ssl_record_version"))
         },
         tls_compression => |s| {
-            s.tls_parser.as_ref().map(|p|
-                p.get("tls.compression")
-            ).flatten()
+            s.tls_parser.as_ref().and_then(|p|
+                p.get("tls.compression"))
         },
         tls_cipher => |s| {
-            s.tls_parser.as_ref().map(|p|
-                p.get("tls.cipher")
-            ).flatten()
+            s.tls_parser.as_ref().and_then(|p|
+                p.get("tls.cipher"))
         },
     }
 }
