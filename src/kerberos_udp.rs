@@ -1,6 +1,6 @@
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
-use der_parser::ber::BerClass;
+use der_parser::ber::Class;
 use der_parser::der::der_read_element_header;
 use kerberos_parser::krb5::{EncryptionType, ErrorCode, PAType, PrincipalName, Realm};
 use kerberos_parser::krb5_parser;
@@ -57,13 +57,13 @@ impl<'a> RParser for KerberosParserUDP<'a> {
         match der_read_element_header(data) {
             Ok((_rem, hdr)) => {
                 // Kerberos messages start with an APPLICATION header
-                if hdr.class != BerClass::Application {
+                if hdr.class() != Class::Application {
                     return ParseResult::Error;
                 }
                 debug!("hdr: {:?}", hdr);
-                match hdr.tag.0 {
+                match hdr.tag().0 {
                     10 => {
-                        self.req_type = hdr.tag.0;
+                        self.req_type = hdr.tag().0;
                         let res = krb5_parser::parse_as_req(data);
                         debug!("AS-REQ: {:?}", res);
                         if let Ok((_, kdc_req)) = res {
@@ -80,7 +80,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                         };
                     }
                     11 => {
-                        self.rep_type = hdr.tag.0;
+                        self.rep_type = hdr.tag().0;
                         let res = krb5_parser::parse_as_rep(data);
                         debug!("AS-REP: {:?}", res);
                         if let Ok((_, kdc_rep)) = res {
@@ -100,7 +100,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                         };
                     }
                     12 => {
-                        self.req_type = hdr.tag.0;
+                        self.req_type = hdr.tag().0;
                         let res = krb5_parser::parse_tgs_req(data);
                         debug!("TGS-REQ: {:?}", res);
                         if let Ok((_, kdc_req)) = res {
@@ -138,7 +138,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                         };
                     }
                     13 => {
-                        self.rep_type = hdr.tag.0;
+                        self.rep_type = hdr.tag().0;
                         let res = krb5_parser::parse_tgs_rep(data);
                         debug!("TGS-REP: {:?}", res);
                         if let Ok((_, kdc_rep)) = res {
@@ -154,7 +154,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                         };
                     }
                     14 => {
-                        self.req_type = hdr.tag.0;
+                        self.req_type = hdr.tag().0;
                         let res = krb5_parser::parse_ap_req(data);
                         debug!("AP-REQ: {:?}", res);
                         if let Ok((_, ap_req)) = res {
@@ -163,12 +163,12 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                         };
                     }
                     15 => {
-                        self.rep_type = hdr.tag.0;
+                        self.rep_type = hdr.tag().0;
                         let res = krb5_parser::parse_ap_rep(data);
                         debug!("AP-REP {:?}", res);
                     }
                     30 => {
-                        self.rep_type = hdr.tag.0;
+                        self.rep_type = hdr.tag().0;
                         let res = krb5_parser::parse_krb_error(data);
                         debug!("KRB-ERROR: {:?}", res);
                         debug!("KRB-ERROR: failed request: {:?}", self.req_type);
@@ -180,7 +180,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                             self.error_code = Some(error.error_code);
                         };
                     }
-                    _ => debug!("unknown/unsupported tag {}", hdr.tag),
+                    _ => debug!("unknown/unsupported tag {}", hdr.tag()),
                 }
                 ParseResult::Ok
             }
@@ -231,11 +231,11 @@ pub fn kerberos_probe_udp(i: &[u8], _l4info: &L4Info) -> ProbeResult {
     match der_read_element_header(i) {
         Ok((rem, hdr)) => {
             // Kerberos messages start with an APPLICATION header
-            if hdr.class != BerClass::Application {
+            if hdr.class() != Class::Application {
                 return ProbeResult::NotForUs;
             }
             // Tag number should be <= 30
-            if hdr.tag.0 >= 30 {
+            if hdr.tag().0 >= 30 {
                 return ProbeResult::NotForUs;
             }
             // Kerberos messages contain sequences

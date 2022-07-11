@@ -90,7 +90,7 @@ pub struct GssCfxWrap {
 
 pub fn parse_gssapi(i: &[u8]) -> BerResult<GssApiBuffer> {
     let (_, hdr) = der_read_element_header(i)?;
-    if hdr.is_constructed() && hdr.is_application() && hdr.tag.0 == 0 {
+    if hdr.is_constructed() && hdr.is_application() && hdr.tag().0 == 0 {
         // probably a wrapped token
         //
         // InitialContextToken ::=
