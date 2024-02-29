@@ -37,5 +37,4 @@ tls-parser = { version="0.12", git="https://github.com/rusticata/tls-parser" }
 x509-parser = "0.14"
 
 [dev-dependencies]
-env_logger = "0.9"
-hex-literal = "0.3"
+hex-literal = "0.4"
