@@ -1,8 +1,11 @@
 use crate::rparser::*;
 use crate::{gen_get_variants, Variant};
+use der_parser::asn1_rs::FromDer;
 use der_parser::ber::Class;
 use der_parser::der::der_read_element_header;
-use kerberos_parser::krb5::{EncryptionType, ErrorCode, PAType, PrincipalName, Realm};
+use kerberos_parser::krb5::{
+    ApRep, ApReq, EncryptionType, ErrorCode, KdcRep, KdcReq, KrbError, PAType, PrincipalName, Realm,
+};
 use kerberos_parser::krb5_parser;
 use std::fmt::Write as _;
 
@@ -71,9 +74,8 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                             debug!("AS-REQ realm: {:?}", kdc_req.req_body.realm);
                             debug!("AS-REQ sname: {:?}", kdc_req.req_body.sname);
                             debug!("AS-REQ addrs: {:?}", kdc_req.req_body.addresses);
-                            if let Ok(s) = kdc_req.req_body.kdc_options.as_slice() {
-                                debug!("AS-REQ kdc_options: {}", to_hex_string(s))
-                            }
+                            let s = kdc_req.req_body.kdc_options.as_ref();
+                            debug!("AS-REQ kdc_options: {}", to_hex_string(s));
                             self.req_cname = kdc_req.req_body.cname;
                             self.req_sname = kdc_req.req_body.sname;
                             self.req_crealm = Some(kdc_req.req_body.realm);
@@ -101,7 +103,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     }
                     12 => {
                         self.req_type = hdr.tag().0;
-                        let res = krb5_parser::parse_tgs_req(data);
+                        let res = KdcReq::from_der(data);
                         debug!("TGS-REQ: {:?}", res);
                         if let Ok((_, kdc_req)) = res {
                             debug!("TGS-REQ cname: {:?}", kdc_req.req_body.cname);
@@ -113,15 +115,14 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                             for padata in &kdc_req.padata {
                                 // SCLogInfo!("TGS-REQ padata: {:?}", padata);
                                 if padata.padata_type == PAType::PA_TGS_REQ {
-                                    match krb5_parser::parse_ap_req(padata.padata_value) {
+                                    match ApReq::from_der(padata.padata_value) {
                                         Ok((_, ap_req)) => {
                                             // SCLogInfo!("parse_ap_req: {:?}",ap_req);
-                                            if let Ok(s) = ap_req.ap_options.as_slice() {
-                                                debug!(
-                                                    "TGS-REQ AP-REQ ap_options: {}",
-                                                    to_hex_string(s)
-                                                )
-                                            }
+                                            let s = ap_req.ap_options.as_ref();
+                                            debug!(
+                                                "TGS-REQ AP-REQ ap_options: {}",
+                                                to_hex_string(s)
+                                            );
                                             debug!(
                                                 "TGS-REQ AP-REQ ticket.sname: {:?}",
                                                 ap_req.ticket.sname
@@ -139,7 +140,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     }
                     13 => {
                         self.rep_type = hdr.tag().0;
-                        let res = krb5_parser::parse_tgs_rep(data);
+                        let res = KdcRep::from_der(data);
                         debug!("TGS-REP: {:?}", res);
                         if let Ok((_, kdc_rep)) = res {
                             debug!("TGS-REP cname: {:?}", kdc_rep.cname);
@@ -155,7 +156,7 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     }
                     14 => {
                         self.req_type = hdr.tag().0;
-                        let res = krb5_parser::parse_ap_req(data);
+                        let res = ApReq::from_der(data);
                         debug!("AP-REQ: {:?}", res);
                         if let Ok((_, ap_req)) = res {
                             debug!("AP-REQ ticket sname: {:?}", ap_req.ticket.sname);
@@ -164,12 +165,12 @@ impl<'a> RParser for KerberosParserUDP<'a> {
                     }
                     15 => {
                         self.rep_type = hdr.tag().0;
-                        let res = krb5_parser::parse_ap_rep(data);
+                        let res = ApRep::from_der(data);
                         debug!("AP-REP {:?}", res);
                     }
                     30 => {
                         self.rep_type = hdr.tag().0;
-                        let res = krb5_parser::parse_krb_error(data);
+                        let res = KrbError::from_der(data);
                         debug!("KRB-ERROR: {:?}", res);
                         debug!("KRB-ERROR: failed request: {:?}", self.req_type);
                         if let Ok((_, error)) = res {
