@@ -264,7 +264,7 @@ impl<'a> LDAPParser<'a> {
     pub fn handle_message(&mut self, msg: &LdapMessage, _direction: Direction) {
         let tx_op = msg.protocol_op.tag();
         let bind_dn = &self.bind_dn;
-        let mut tx = self
+        let tx = self
             .transactions
             .entry(msg.message_id)
             .or_insert_with(|| LDAPTransaction::new(msg.message_id, tx_op, bind_dn));

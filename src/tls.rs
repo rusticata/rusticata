@@ -322,11 +322,7 @@ impl<'a> TlsParser<'a> {
     }
 
     /// Record-level TLS parsing
-    pub fn parse_record_level<'b>(
-        &mut self,
-        r: &TlsRawRecord<'b>,
-        direction: Direction,
-    ) -> ParseResult {
+    pub fn parse_record_level(&mut self, r: &TlsRawRecord, direction: Direction) -> ParseResult {
         let mut v: Vec<u8>;
         let mut status = ParseResult::Ok;
 

@@ -48,7 +48,7 @@ pub fn ikev2_natt_probe(i: &[u8], l4info: &L4Info) -> ProbeResult {
         return ProbeResult::Unsure;
     }
     match be_u32::<&[u8], ()>(i) {
-        Ok((rem, mark)) if mark == 0 => ipsec_probe(rem, l4info),
+        Ok((rem, 0)) => ipsec_probe(rem, l4info),
         _ => ProbeResult::NotForUs,
     }
 }
