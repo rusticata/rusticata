@@ -14,6 +14,9 @@ edition = "2018"
 # crate-type = ["dylib"]
 # # crate-type = ["staticlib"]
 
+[features]
+default = []
+
 [dependencies]
 log = "0.4.6"
 nom = "7.0"
