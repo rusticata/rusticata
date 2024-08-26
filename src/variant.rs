@@ -195,11 +195,10 @@ macro_rules! gen_get_variants {
 #[cfg(test)]
 mod tests {
     use super::Variant;
-    use std::mem;
 
     #[test]
     fn variant_size() {
         // expected: 32: 8 (variant) + 24 (String)
-        println!("sizeof Variant: {}", mem::size_of::<Variant>());
+        println!("sizeof Variant: {}", size_of::<Variant>());
     }
 }
